@@ -9,18 +9,6 @@
     android:theme="@style/Theme.Material3.DynamicColors.DayNight">
 
 
-
-
-    <ProgressBar
-        android:id="@+id/bar_data_usage"
-        style="@android:style/Widget.ProgressBar.Horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:layout_marginTop="2dp"
-        android:max="100"
-        android:progress="100" />
-
-
     <!-- Voice recording controls -->
     <LinearLayout
         android:id="@+id/voice_controls"
@@ -50,6 +38,48 @@
             android:visibility="gone"
             android:padding="8dp"
             android:layout_marginStart="16dp"/>
+    </LinearLayout>
+
+    <!-- WebRTC Call controls -->
+    <LinearLayout
+        android:id="@+id/call_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="12dp">
+
+        <!-- Start call button -->
+        <Button
+            android:id="@+id/btn_start_call"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📞 Call"
+            android:backgroundTint="#4CAF50"
+            android:textColor="#FFFFFF"
+            android:padding="8dp" />
+
+        <!-- Mute button -->
+        <Button
+            android:id="@+id/btn_toggle_mute"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔇"
+            android:backgroundTint="#2196F3"
+            android:textColor="#FFFFFF"
+            android:padding="8dp"
+            android:layout_marginStart="8dp"/>
+
+        <!-- End call button -->
+        <Button
+            android:id="@+id/btn_end_call"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="❌"
+            android:backgroundTint="#F44336"
+            android:textColor="#FFFFFF"
+            android:padding="8dp"
+            android:layout_marginStart="8dp"/>            
     </LinearLayout>
 
 </LinearLayout>

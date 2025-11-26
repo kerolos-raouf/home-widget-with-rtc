@@ -32,6 +32,12 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS),
+            101
+        )
+
         val recordings = getRecordedVoices(this)
 
         adapter = VoiceRecordingsAdapter(
@@ -44,12 +50,6 @@ class MainActivity : AppCompatActivity() {
             })
 
         findViewById<RecyclerView>(R.id.voices_list).adapter = adapter
-
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.RECORD_AUDIO),
-            101
-        )
 
         findViewById<Button>(R.id.refresh_list).setOnClickListener {
             val files = getRecordedVoices(this)
