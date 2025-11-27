@@ -6,6 +6,11 @@ import android.content.Intent
 import android.util.Log
 
 const val SWITCH_TO_NEXT_SUBSCRIPTION_LINE_ACTION = "com.example.homewidgettocall.action.SWITCH_TO_NEXT_SUBSCRIPTION_LINE"
+const val ACTION_START_WEBRTC_CALL = "com.example.homewidgettocall.action.ACTION_START_WEBRTC_CALL"
+const val ACTION_END_WEBRTC_CALL = "com.example.homewidgettocall.action.ACTION_END_WEBRTC_CALL"
+const val ACTION_TOGGLE_MUTE = "com.example.homewidgettocall.action.ACTION_TOGGLE_MUTE"
+const val SERVER_URL_EXTRA = "server_url"
+const val ROOM_ID_EXTRA = "room_id"
 
 class WidgetReceiver : BroadcastReceiver() {
 
@@ -21,20 +26,20 @@ class WidgetReceiver : BroadcastReceiver() {
 
                 context.startForegroundService(serviceIntent)
             }
-            
-            "ACTION_START_WEBRTC_CALL" -> {
-                val serverUrl = intent.getStringExtra("server_url") ?: return
-                val roomId = intent.getStringExtra("room_id") ?: return
+
+            ACTION_START_WEBRTC_CALL -> {
+                val serverUrl = intent.getStringExtra(SERVER_URL_EXTRA) ?: return
+                val roomId = intent.getStringExtra(ROOM_ID_EXTRA) ?: return
                 Log.d("WidgetReceiver", "Starting WebRTC call to room: $roomId")
                 AudioCallService.startCall(context, serverUrl, roomId)
             }
-            
-            "ACTION_END_WEBRTC_CALL" -> {
+
+            ACTION_END_WEBRTC_CALL -> {
                 Log.d("WidgetReceiver", "Ending WebRTC call")
                 AudioCallService.endCall(context)
             }
-            
-            "ACTION_TOGGLE_MUTE" -> {
+
+            ACTION_TOGGLE_MUTE -> {
                 Log.d("WidgetReceiver", "Toggling mute")
                 AudioCallService.toggleMute(context)
             }

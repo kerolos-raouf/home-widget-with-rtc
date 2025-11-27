@@ -9,7 +9,6 @@ import android.util.Log
 import android.widget.RemoteViews
 import com.example.homewidgettocall.R
 
-private const val PROGRESS_BAR_MAX_VALUE = 100
 const val WIDGET_ID = "widget_id"
 
 class AppWidgetHelperImpl(
@@ -65,10 +64,10 @@ class AppWidgetHelperImpl(
         
         // Start call button
         val startCallIntent = Intent(context, WidgetReceiver::class.java).apply {
-            action = "ACTION_START_WEBRTC_CALL"
+            action = ACTION_START_WEBRTC_CALL
             putExtra(WIDGET_ID, widgetId)
-            putExtra("server_url", serverUrl)
-            putExtra("room_id", roomId)
+            putExtra(SERVER_URL_EXTRA, serverUrl)
+            putExtra(ROOM_ID_EXTRA, roomId)
         }
         val startCallPendingIntent = PendingIntent.getBroadcast(
             context,
@@ -80,7 +79,7 @@ class AppWidgetHelperImpl(
         
         // End call button
         val endCallIntent = Intent(context, WidgetReceiver::class.java).apply {
-            action = "ACTION_END_WEBRTC_CALL"
+            action = ACTION_END_WEBRTC_CALL
             putExtra(WIDGET_ID, widgetId)
         }
         val endCallPendingIntent = PendingIntent.getBroadcast(
@@ -93,7 +92,7 @@ class AppWidgetHelperImpl(
         
         // Toggle mute button
         val muteIntent = Intent(context, WidgetReceiver::class.java).apply {
-            action = "ACTION_TOGGLE_MUTE"
+            action = ACTION_TOGGLE_MUTE
             putExtra(WIDGET_ID, widgetId)
         }
         val mutePendingIntent = PendingIntent.getBroadcast(
