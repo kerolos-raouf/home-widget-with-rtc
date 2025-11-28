@@ -157,8 +157,16 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
 
     private fun actuallyJoinRoom() {
         currentRoomId?.let { roomId ->
-            audioClient?.joinRoom(roomId)
+            // IMPORTANT: Start audio FIRST, then join room
+            // This ensures we have our audio track ready before anyone tries to connect
+            Log.d(TAG, "Starting audio BEFORE joining room")
             audioClient?.startAudioCall()
+            
+            // Small delay to ensure audio is initialized
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                Log.d(TAG, "Now joining room: $roomId")
+                audioClient?.joinRoom(roomId)
+            }, 500)
         }
     }
 

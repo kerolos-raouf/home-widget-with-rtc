@@ -25,6 +25,8 @@ class AudioOnlyWebRTCClient(
     private var remoteUserId: String? = null
     
     private var isMuted = false
+    private var makingOffer = false
+    private var isPolite = false  // Will be set based on socket ID comparison
 
     interface AudioCallListener {
         fun onConnectedToServer()
@@ -92,13 +94,10 @@ class AudioOnlyWebRTCClient(
                         remoteUserId = userId
                         listener.onUserJoined(userId)
                         
-                        // Create offer if we have local audio track
-                        if (localAudioTrack != null) {
-                            Log.d(TAG, "Creating offer for newly joined user: $userId")
-                            createOffer(userId)
-                        } else {
-                            Log.w(TAG, "Local audio track not ready yet, will create offer when audio starts")
-                        }
+                        // DON'T create offer here!
+                        // The new user (second person) will create the offer
+                        // First person just waits and responds with answer
+                        Log.d(TAG, "Waiting for offer from the newly joined user...")
                     } catch (e: Exception) {
                         Log.e(TAG, "Error handling user-joined", e)
                     }
@@ -180,12 +179,19 @@ class AudioOnlyWebRTCClient(
                     if (participants != null && participants.length() > 0) {
                         remoteUserId = participants.getString(0)
                         Log.d(TAG, "Found existing participant: $remoteUserId")
+                        Log.d(TAG, "👥 I'm the SECOND person - I will create the offer")
                         
-                        // If we already have local audio track, create offer immediately
+                        // Second person creates the offer
                         if (localAudioTrack != null) {
-                            Log.d(TAG, "Creating offer for existing participant")
-                            createOffer(remoteUserId!!)
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                remoteUserId?.let { userId ->
+                                    Log.d(TAG, "Creating offer as second participant")
+                                    createOffer(userId)
+                                }
+                            }, 500)
                         }
+                    } else {
+                        Log.d(TAG, "👤 I'm the FIRST person - I will wait for others and respond to their offers")
                     }
                 } else {
                     listener.onError("Failed to join room")
@@ -209,16 +215,10 @@ class AudioOnlyWebRTCClient(
             val audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
             localAudioTrack = peerConnectionFactory?.createAudioTrack("local_audio", audioSource)
             
-            // IMPORTANT: Disable local audio playback (so you don't hear yourself)
+            // IMPORTANT: Enable audio track
             localAudioTrack?.setEnabled(true)
             
-            Log.d(TAG, "🎙️ Audio stream started")
-            
-            // If there's a remote user waiting, create offer
-            remoteUserId?.let { userId ->
-                Log.d(TAG, "Remote user exists ($userId), creating offer now")
-                createOffer(userId)
-            } ?: Log.d(TAG, "No remote user yet, will create offer when someone joins")
+            Log.d(TAG, "🎙️ Audio stream started and ready")
         } catch (e: Exception) {
             Log.e(TAG, "Error starting audio", e)
             listener.onError("Failed to start audio: ${e.message}")
@@ -276,8 +276,25 @@ class AudioOnlyWebRTCClient(
                 override fun onIceConnectionReceivingChange(receiving: Boolean) {
                 }
 
-                override fun onIceConnectionChange(newState: PeerConnection.IceConnectionState) {}
-                override fun onIceGatheringChange(newState: PeerConnection.IceGatheringState) {}
+                override fun onIceConnectionChange(newState: PeerConnection.IceConnectionState) {
+                    Log.d(TAG, "🧊 ICE connection state: $newState")
+                    when (newState) {
+                        PeerConnection.IceConnectionState.CONNECTED,
+                        PeerConnection.IceConnectionState.COMPLETED -> {
+                            Log.d(TAG, "✅ ICE connection established")
+                        }
+                        PeerConnection.IceConnectionState.FAILED -> {
+                            Log.e(TAG, "❌ ICE connection failed")
+                        }
+                        PeerConnection.IceConnectionState.DISCONNECTED -> {
+                            Log.w(TAG, "⚠️ ICE connection disconnected")
+                        }
+                        else -> {}
+                    }
+                }
+                override fun onIceGatheringChange(newState: PeerConnection.IceGatheringState) {
+                    Log.d(TAG, "🧊 ICE gathering state: $newState")
+                }
                 override fun onSignalingChange(newState: PeerConnection.SignalingState) {}
                 override fun onDataChannel(dataChannel: DataChannel) {}
                 override fun onRenegotiationNeeded() {}
@@ -300,6 +317,7 @@ class AudioOnlyWebRTCClient(
         }
 
         Log.d(TAG, "📤 Creating offer for: $targetUserId")
+        makingOffer = true  // Set flag to detect collisions
         
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
@@ -311,6 +329,7 @@ class AudioOnlyWebRTCClient(
                 Log.d(TAG, "✅ Offer created successfully")
                 peerConnection?.setLocalDescription(object : SdpObserver {
                     override fun onSetSuccess() {
+                        makingOffer = false  // Clear flag after offer is set
                         Log.d(TAG, "✅ Local description set, sending offer to $targetUserId")
                         val data = JSONObject().apply {
                             put("targetUserId", targetUserId)
@@ -323,6 +342,7 @@ class AudioOnlyWebRTCClient(
                         socket?.emit("offer", data)
                     }
                     override fun onSetFailure(error: String) {
+                        makingOffer = false  // Clear flag on failure
                         Log.e(TAG, "❌ Set local description failed: $error")
                     }
                     override fun onCreateSuccess(p0: SessionDescription) {}
@@ -330,6 +350,7 @@ class AudioOnlyWebRTCClient(
                 }, sessionDescription)
             }
             override fun onCreateFailure(error: String) {
+                makingOffer = false  // Clear flag on failure
                 Log.e(TAG, "❌ Create offer failed: $error")
             }
             override fun onSetSuccess() {}
@@ -338,7 +359,33 @@ class AudioOnlyWebRTCClient(
     }
 
     private fun handleOffer(offer: JSONObject, senderId: String) {
+        Log.d(TAG, "📥 Received offer from: $senderId")
+        
+        // Make sure we have our local audio track before responding
+        if (localAudioTrack == null) {
+            Log.e(TAG, "❌ Cannot handle offer: local audio track not initialized!")
+            listener.onError("Audio not ready")
+            return
+        }
+        
+        // Determine who is polite based on socket IDs (lexicographic comparison)
+        if (!isPolite && remoteUserId != null) {
+            val myId = socket?.id() ?: ""
+            isPolite = myId > remoteUserId!!  // Polite peer has higher ID
+            Log.d(TAG, "I am ${if (isPolite) "POLITE" else "IMPOLITE"} peer")
+        }
+        
+        // Perfect negotiation logic
+        val offerCollision = makingOffer
+        val ignoreOffer = !isPolite && offerCollision
+        
+        if (ignoreOffer) {
+            Log.w(TAG, "⚠️ Ignoring offer due to collision (I'm impolite and making offer)")
+            return
+        }
+        
         if (peerConnection == null) {
+            Log.d(TAG, "Creating peer connection for incoming offer")
             createPeerConnection(senderId)
         }
 
@@ -347,17 +394,23 @@ class AudioOnlyWebRTCClient(
             offer.getString("sdp")
         )
 
+        Log.d(TAG, "Setting remote description (offer)")
         peerConnection?.setRemoteDescription(object : SdpObserver {
             override fun onSetSuccess() {
+                Log.d(TAG, "✅ Remote description set, creating answer")
                 createAnswer(senderId)
             }
-            override fun onSetFailure(error: String) {}
+            override fun onSetFailure(error: String) {
+                Log.e(TAG, "❌ Set remote description failed: $error")
+            }
             override fun onCreateSuccess(p0: SessionDescription) {}
             override fun onCreateFailure(error: String) {}
         }, sdp)
     }
 
     private fun createAnswer(targetUserId: String) {
+        Log.d(TAG, "📤 Creating answer for: $targetUserId")
+        
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
@@ -365,8 +418,10 @@ class AudioOnlyWebRTCClient(
 
         peerConnection?.createAnswer(object : SdpObserver {
             override fun onCreateSuccess(sessionDescription: SessionDescription) {
+                Log.d(TAG, "✅ Answer created successfully")
                 peerConnection?.setLocalDescription(object : SdpObserver {
                     override fun onSetSuccess() {
+                        Log.d(TAG, "✅ Local description set (answer), sending to $targetUserId")
                         val data = JSONObject().apply {
                             put("targetUserId", targetUserId)
                             put("roomId", currentRoomId)
@@ -377,18 +432,24 @@ class AudioOnlyWebRTCClient(
                         }
                         socket?.emit("answer", data)
                     }
-                    override fun onSetFailure(error: String) {}
+                    override fun onSetFailure(error: String) {
+                        Log.e(TAG, "❌ Set local description failed (answer): $error")
+                    }
                     override fun onCreateSuccess(p0: SessionDescription) {}
                     override fun onCreateFailure(error: String) {}
                 }, sessionDescription)
             }
-            override fun onCreateFailure(error: String) {}
+            override fun onCreateFailure(error: String) {
+                Log.e(TAG, "❌ Create answer failed: $error")
+            }
             override fun onSetSuccess() {}
             override fun onSetFailure(error: String) {}
         }, constraints)
     }
 
     private fun handleAnswer(answer: JSONObject) {
+        Log.d(TAG, "📥 Received answer, setting remote description")
+        
         val sdp = SessionDescription(
             SessionDescription.Type.ANSWER,
             answer.getString("sdp")
@@ -396,21 +457,28 @@ class AudioOnlyWebRTCClient(
 
         peerConnection?.setRemoteDescription(object : SdpObserver {
             override fun onSetSuccess() {
-                Log.d(TAG, "Remote description set (answer)")
+                Log.d(TAG, "✅ Remote description set (answer) - connection should be established now")
             }
-            override fun onSetFailure(error: String) {}
+            override fun onSetFailure(error: String) {
+                Log.e(TAG, "❌ Set remote description failed (answer): $error")
+            }
             override fun onCreateSuccess(p0: SessionDescription) {}
             override fun onCreateFailure(error: String) {}
         }, sdp)
     }
 
     private fun addIceCandidate(candidateJson: JSONObject) {
-        val candidate = IceCandidate(
-            candidateJson.getString("sdpMid"),
-            candidateJson.getInt("sdpMLineIndex"),
-            candidateJson.getString("candidate")
-        )
-        peerConnection?.addIceCandidate(candidate)
+        try {
+            val candidate = IceCandidate(
+                candidateJson.getString("sdpMid"),
+                candidateJson.getInt("sdpMLineIndex"),
+                candidateJson.getString("candidate")
+            )
+            peerConnection?.addIceCandidate(candidate)
+            Log.d(TAG, "✅ ICE candidate added")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to add ICE candidate: ${e.message}")
+        }
     }
 
     fun setMuted(muted: Boolean) {
