@@ -24,6 +24,8 @@ import com.example.homewidgettocall.webrtc.AudioOnlyWebRTCClient
  * Foreground service for audio-only WebRTC calls
  * Works with home widgets - runs in background
  */
+const val EXTRA_RECEIVE_ONLY = "receive_only"
+
 class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
 
     private var audioClient: AudioOnlyWebRTCClient? = null
@@ -263,19 +265,17 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
     // Notification management
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Audio Calls",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Ongoing audio calls"
-                setSound(null, null)
-            }
-
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Audio Calls",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Ongoing audio calls"
+            setSound(null, null)
         }
+
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(channel)
     }
 
     private fun createNotification(title: String, text: String = ""): Notification {
@@ -383,6 +383,16 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
                 putExtra(EXTRA_ROOM_ID, roomId)
             }
 
+            context.startForegroundService(intent)
+        }
+
+        fun startCallReceiveOnly(context: Context, serverUrl: String, roomId: String) {
+            val intent = Intent(context, AudioCallService::class.java).apply {
+                action = ACTION_START_CALL
+                putExtra(EXTRA_SERVER_URL, serverUrl)
+                putExtra(EXTRA_ROOM_ID, roomId)
+                putExtra(EXTRA_RECEIVE_ONLY, true)
+            }
             context.startForegroundService(intent)
         }
 

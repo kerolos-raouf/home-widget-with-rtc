@@ -82,8 +82,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 
                 // Automatically answer the call (no notification)
                 Log.d(TAG, "🤖 Auto-answering call...")
-                //autoJoinCall(serverUrl, roomId, callerName)
-                showIncomingCallNotification(callerName, callerId, roomId, serverUrl)
+                autoJoinCall(serverUrl, roomId, callerName)
+                //showIncomingCallNotification(callerName, callerId, roomId, serverUrl)
             }
             
             "call_ended" -> {
@@ -271,70 +271,64 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     
     /**
      * Auto-join call when receiving FCM notification
-     * Directly starts the audio call without user interaction
+     * Joins in RECEIVE-ONLY mode (no mic = no permission needed!)
      */
     private fun autoJoinCall(serverUrl: String, roomId: String, callerName: String) {
-        Log.d(TAG, "🚀 Auto-joining call: room=$roomId, server=$serverUrl")
+        Log.d(TAG, "🤫 Auto-joining call SILENTLY (receive-only mode)")
         
-        // Check if we have RECORD_AUDIO permission (required for Android 14+)
-        if (!hasRecordAudioPermission()) {
-            Log.e(TAG, "❌ Missing RECORD_AUDIO permission, cannot auto-join call")
-            // Show notification asking user to grant permission and join manually
-            showPermissionRequiredNotification(callerName, roomId, serverUrl)
-            return
-        }
+        // Start AudioCallService in RECEIVE-ONLY mode
+        // This starts foreground service WITHOUT microphone type = NO permission needed!
+        AudioCallService.startCallReceiveOnly(
+            this, serverUrl, roomId
+        )
         
-        // Start AudioCallService directly (simulates clicking the Call button)
-        AudioCallService.startCall(this, serverUrl, roomId)
-        
-        // Show notification that we're joining
-        showAutoJoiningNotification(callerName, roomId)
+        Log.d(TAG, "✅ Joined in receive-only mode - listening to audio")
     }
     
     /**
-     * Check if app has RECORD_AUDIO permission
+     * Show notification for user to tap and join call
+     * Tapping opens MainActivity which will handle permission and join
      */
-    private fun hasRecordAudioPermission(): Boolean {
-        return androidx.core.content.ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.RECORD_AUDIO
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-    
-    /**
-     * Show notification when permission is missing
-     */
-    private fun showPermissionRequiredNotification(
+    private fun showTapToJoinNotification(
         callerName: String,
         roomId: String,
         serverUrl: String
     ) {
-        // Intent to open app so user can grant permission
-        val openIntent = Intent(this, MainActivity::class.java).apply {
+        // Intent to open MainActivity which will join the call
+        val joinIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("auto_join_call", true)
             putExtra("caller_name", callerName)
             putExtra("room_id", roomId)
             putExtra("server_url", serverUrl)
-            putExtra("need_permission", true)
         }
-        val openPendingIntent = PendingIntent.getActivity(
+        val joinPendingIntent = PendingIntent.getActivity(
             this,
             0,
-            openIntent,
+            joinIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notification = NotificationCompat.Builder(this, CALL_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("📞 Incoming Call from $callerName")
-            .setContentText("Tap to grant microphone permission and join")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentTitle("📞 Incoming Call")
+            .setContentText("$callerName is calling. Tap to join!")
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
-            .setContentIntent(openPendingIntent)
+            .setContentIntent(joinPendingIntent)
+            .setFullScreenIntent(joinPendingIntent, true)  // Show as heads-up
+            .setSound(android.provider.Settings.System.DEFAULT_RINGTONE_URI)
+            .setVibrate(longArrayOf(0, 1000, 500, 1000))
+            .addAction(
+                R.drawable.ic_launcher_foreground,
+                "Join Call",
+                joinPendingIntent
+            )
             .build()
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(PERMISSION_REQUIRED_NOTIFICATION_ID, notification)
+        notificationManager.notify(INCOMING_CALL_NOTIFICATION_ID, notification)
     }
     
     /**
@@ -375,7 +369,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         private const val INCOMING_CALL_NOTIFICATION_ID = 2001
         private const val GENERAL_NOTIFICATION_ID = 2002
         private const val AUTO_JOIN_NOTIFICATION_ID = 2003
-        private const val PERMISSION_REQUIRED_NOTIFICATION_ID = 2004
         
         // Request codes for PendingIntents
         private const val ANSWER_REQUEST_CODE = 100

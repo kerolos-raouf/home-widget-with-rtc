@@ -9,7 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-const val SWITCH_TO_NEXT_SUBSCRIPTION_LINE_ACTION = "com.example.homewidgettocall.action.SWITCH_TO_NEXT_SUBSCRIPTION_LINE"
+const val RECORD_A_VOICE = "com.example.homewidgettocall.action.SWITCH_TO_NEXT_SUBSCRIPTION_LINE"
 const val ACTION_START_WEBRTC_CALL = "com.example.homewidgettocall.action.ACTION_START_WEBRTC_CALL"
 const val ACTION_END_WEBRTC_CALL = "com.example.homewidgettocall.action.ACTION_END_WEBRTC_CALL"
 const val ACTION_TOGGLE_MUTE = "com.example.homewidgettocall.action.ACTION_TOGGLE_MUTE"
@@ -31,7 +31,7 @@ class WidgetReceiver : BroadcastReceiver() {
         context ?: return
         
         when (intent?.action) {
-            SWITCH_TO_NEXT_SUBSCRIPTION_LINE_ACTION -> {
+            RECORD_A_VOICE -> {
                 Log.d("UsageWidgetReceiver", "onReceive: ${intent.extras?.getInt(WIDGET_ID)}")
 
                 val serviceIntent = Intent(context, VoiceRecorderService::class.java)

@@ -39,7 +39,7 @@ class AppWidgetHelperImpl(
 
     private fun RemoteViews.setReceiverPendingIntent(widgetId: Int) {
         val intent = Intent(context, WidgetReceiver::class.java).apply {
-            action = SWITCH_TO_NEXT_SUBSCRIPTION_LINE_ACTION
+            action = RECORD_A_VOICE
             putExtra(WIDGET_ID, widgetId)
         }
         val pendingIntent = PendingIntent.getBroadcast(

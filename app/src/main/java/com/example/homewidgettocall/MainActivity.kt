@@ -51,6 +51,9 @@ class MainActivity : AppCompatActivity() {
 
         // Initialize FCM and get token
         initializeFCM()
+        
+        // Check if we should auto-join a call from notification
+        handleIncomingCallIntent()
 
         val recordings = getRecordedVoices(this)
 
@@ -93,6 +96,24 @@ class MainActivity : AppCompatActivity() {
         
         // Optional: Subscribe to topics for group notifications
         // FCMHelper.subscribeToTopic("all_users")
+    }
+    
+    /**
+     * Handle incoming call intent from FCM notification
+     */
+    private fun handleIncomingCallIntent() {
+        val autoJoin = intent.getBooleanExtra("auto_join_call", false)
+        if (autoJoin) {
+            val callerName = intent.getStringExtra("caller_name") ?: "Someone"
+            val roomId = intent.getStringExtra("room_id") ?: return
+            val serverUrl = intent.getStringExtra("server_url") ?: return
+            
+            Log.d(TAG, "📞 Auto-joining call from: $callerName")
+            Toast.makeText(this, "Joining call from $callerName...", Toast.LENGTH_SHORT).show()
+            
+            // Start the call service (permission will be requested if needed)
+            com.example.homewidgettocall.widget.AudioCallService.startCall(this, serverUrl, roomId)
+        }
     }
 
     fun getRecordedVoices(context: Context): List<VoiceRecording> {
