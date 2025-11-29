@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "239781162084",
+    "project_id": "homewidget-3fa21",
+    "storage_bucket": "homewidget-3fa21.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:239781162084:android:82adcde71bdb902b734371",
+        "android_client_info": {
+          "package_name": "com.example.homewidgettocall"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2y6YJLctjMuGQcoj1VUbkoEPKMnhXMSI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

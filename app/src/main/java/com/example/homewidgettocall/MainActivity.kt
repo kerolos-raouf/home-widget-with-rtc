@@ -3,15 +3,18 @@ package com.example.homewidgettocall
 import android.Manifest
 import android.content.Context
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.example.homewidgettocall.fcm.FCMHelper
 import com.example.homewidgettocall.model.VoiceRecording
 import java.io.File
 
@@ -32,11 +35,22 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS),
-            101
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS),
+                101
+            )
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                101
+            )
+        }
+
+        // Initialize FCM and get token
+        initializeFCM()
 
         val recordings = getRecordedVoices(this)
 
@@ -55,6 +69,30 @@ class MainActivity : AppCompatActivity() {
             val files = getRecordedVoices(this)
             adapter.updateList(files)
         }
+    }
+
+    /**
+     * Initialize Firebase Cloud Messaging
+     */
+    private fun initializeFCM() {
+        Log.d(TAG, "Initializing FCM...")
+        
+        // Get FCM token
+        FCMHelper.getCurrentToken(this) { token ->
+            if (token != null) {
+                Log.d(TAG, "✅ FCM Token obtained: $token")
+                Toast.makeText(this, "FCM Token: ${token.take(20)}...", Toast.LENGTH_SHORT).show()
+                
+                // TODO: Send token to your server
+                // FCMHelper.sendTokenToServer(token, userId = "your_user_id")
+            } else {
+                Log.e(TAG, "❌ Failed to get FCM token")
+                Toast.makeText(this, "Failed to get FCM token", Toast.LENGTH_SHORT).show()
+            }
+        }
+        
+        // Optional: Subscribe to topics for group notifications
+        // FCMHelper.subscribeToTopic("all_users")
     }
 
     fun getRecordedVoices(context: Context): List<VoiceRecording> {
@@ -96,5 +134,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
+    companion object {
+        private const val TAG = "MainActivity"
+    }
 }

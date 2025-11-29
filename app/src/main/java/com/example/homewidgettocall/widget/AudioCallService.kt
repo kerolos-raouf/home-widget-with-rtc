@@ -383,11 +383,7 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
                 putExtra(EXTRA_ROOM_ID, roomId)
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            context.startForegroundService(intent)
         }
 
         /**
@@ -398,11 +394,7 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
                 action = ACTION_END_CALL
             }
             // Must use startForegroundService from background (widgets)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            context.startForegroundService(intent)
         }
 
         /**
@@ -413,11 +405,7 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
                 action = ACTION_TOGGLE_MUTE
             }
             // Must use startForegroundService from background (widgets)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            context.startForegroundService(intent)
         }
     }
 }

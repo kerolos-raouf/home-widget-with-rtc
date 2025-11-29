@@ -65,6 +65,35 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
+        <!-- Firebase Cloud Messaging Service -->
+        <service
+            android:name=".fcm.MyFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Receiver for call actions (decline, etc.) -->
+        <receiver
+            android:name=".fcm.CallActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.homewidgettocall.DECLINE_CALL" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Firebase default notification channel (optional) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default_channel" />
+
+        <!-- Firebase notification icon (optional - uses app icon by default) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_launcher_foreground" />
+
+
     </application>
 
 </manifest>

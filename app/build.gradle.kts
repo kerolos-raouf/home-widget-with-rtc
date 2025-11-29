@@ -1,6 +1,9 @@
+import com.android.build.api.dsl.Packaging
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -33,6 +36,20 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
+    packaging {
+        resources {
+            excludes.addAll(
+                listOf(
+                    "META-INF/INDEX.LIST",
+                    "META-INF/LICENSE",
+                    "META-INF/NOTICE",
+                    "META-INF/DEPENDENCIES"  // Fix for Google Auth library conflict
+                )
+            )
+        }
+    }
+
 }
 
 dependencies {
@@ -62,4 +79,10 @@ dependencies {
 
     // JSON parsing (for Socket.IO)
     implementation(libs.json)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.messaging)
+    implementation(libs.google.auth.library.oauth2.http)
 }
