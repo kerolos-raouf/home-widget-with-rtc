@@ -149,6 +149,40 @@ class AudioOnlyWebRTCClient(
                     }
                 }
 
+                // Listen for audio-enabled from other users
+                on("user-audio-enabled") { args ->
+                    try {
+                        val data = args[0] as JSONObject
+                        val userId = data.getString("userId")
+                        Log.d(TAG, "🎙️ User $userId enabled audio")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error handling user-audio-enabled", e)
+                    }
+                }
+
+                // Listen for audio-disabled from other users
+                on("user-audio-disabled") { args ->
+                    try {
+                        val data = args[0] as JSONObject
+                        val userId = data.getString("userId")
+                        Log.d(TAG, "🔇 User $userId disabled audio")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error handling user-audio-disabled", e)
+                    }
+                }
+
+                // Listen for mute status from other users
+                on("user-mute-status") { args ->
+                    try {
+                        val data = args[0] as JSONObject
+                        val userId = data.getString("userId")
+                        val isMuted = data.getBoolean("isMuted")
+                        Log.d(TAG, "User $userId is now ${if (isMuted) "muted" else "unmuted"}")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error handling user-mute-status", e)
+                    }
+                }
+
                 connect()
             }
         } catch (e: Exception) {
@@ -181,15 +215,17 @@ class AudioOnlyWebRTCClient(
                         Log.d(TAG, "Found existing participant: $remoteUserId")
                         Log.d(TAG, "👥 I'm the SECOND person - I will create the offer")
                         
-                        // Second person creates the offer
-                        if (localAudioTrack != null) {
-                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                remoteUserId?.let { userId ->
-                                    Log.d(TAG, "Creating offer as second participant")
-                                    createOffer(userId)
+                        // Second person creates the offer (works even without audio!)
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            remoteUserId?.let { userId ->
+                                if (localAudioTrack != null) {
+                                    Log.d(TAG, "Creating offer as second participant (WITH audio)")
+                                } else {
+                                    Log.d(TAG, "Creating offer as second participant (MUTED - Google Meet style)")
                                 }
-                            }, 500)
-                        }
+                                createOffer(userId)
+                            }
+                        }, 500)
                     } else {
                         Log.d(TAG, "👤 I'm the FIRST person - I will wait for others and respond to their offers")
                     }
@@ -222,6 +258,59 @@ class AudioOnlyWebRTCClient(
         } catch (e: Exception) {
             Log.e(TAG, "Error starting audio", e)
             listener.onError("Failed to start audio: ${e.message}")
+        }
+    }
+
+    /**
+     * Enable audio AFTER joining room (Google Meet style)
+     * Called automatically when user unmutes for the first time
+     */
+    fun enableAudioAfterJoining() {
+        if (localAudioTrack != null) {
+            Log.d(TAG, "Audio already enabled")
+            return
+        }
+        
+        Log.d(TAG, "🎙️ Enabling audio AFTER joining (Google Meet style)...")
+        
+        try {
+            val audioConstraints = MediaConstraints().apply {
+                mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "true"))
+            }
+            
+            val audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
+            localAudioTrack = peerConnectionFactory?.createAudioTrack("local_audio", audioSource)
+            localAudioTrack?.setEnabled(true)
+            
+            Log.d(TAG, "✅ Audio track created")
+            
+            // Add track to existing peer connection
+            if (peerConnection != null && localAudioTrack != null) {
+                peerConnection?.addTrack(localAudioTrack!!, listOf("local_stream"))
+                Log.d(TAG, "✅ Audio track added to existing peer connection")
+                
+                // Renegotiate to include audio
+                remoteUserId?.let { userId ->
+                    Log.d(TAG, "Renegotiating connection to include audio...")
+                    createOffer(userId)
+                }
+            }
+            
+            // Notify server that audio is now enabled
+            currentRoomId?.let { roomId ->
+                socket?.emit("audio-enabled", JSONObject().apply {
+                    put("roomId", roomId)
+                })
+                Log.d(TAG, "✅ Notified server: audio-enabled")
+            }
+            
+            Log.d(TAG, "✅ Audio enabled successfully!")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to enable audio", e)
+            listener.onError("Failed to enable audio: ${e.message}")
         }
     }
 
@@ -304,11 +393,13 @@ class AudioOnlyWebRTCClient(
             }
         )
 
-        localAudioTrack?.let { track -> 
-            peerConnection?.addTrack(track, listOf("local_stream"))
+        // Add audio track ONLY if available (Google Meet style - can join without it!)
+        if (localAudioTrack != null) {
+            peerConnection?.addTrack(localAudioTrack!!, listOf("local_stream"))
+            Log.d(TAG, "PeerConnection created WITH audio for: $targetUserId")
+        } else {
+            Log.d(TAG, "PeerConnection created WITHOUT audio (muted) for: $targetUserId")
         }
-        
-        Log.d(TAG, "PeerConnection created for: $targetUserId")
     }
 
     private fun createOffer(targetUserId: String) {
@@ -361,11 +452,11 @@ class AudioOnlyWebRTCClient(
     private fun handleOffer(offer: JSONObject, senderId: String) {
         Log.d(TAG, "📥 Received offer from: $senderId")
         
-        // Make sure we have our local audio track before responding
+        // Can handle offer even WITHOUT audio track (Google Meet style!)
         if (localAudioTrack == null) {
-            Log.e(TAG, "❌ Cannot handle offer: local audio track not initialized!")
-            listener.onError("Audio not ready")
-            return
+            Log.d(TAG, "⚠️ Handling offer WITHOUT audio (muted - will enable on unmute)")
+        } else {
+            Log.d(TAG, "✅ Handling offer WITH audio")
         }
         
         // Determine who is polite based on socket IDs (lexicographic comparison)
@@ -482,9 +573,31 @@ class AudioOnlyWebRTCClient(
     }
 
     fun setMuted(muted: Boolean) {
+        // If trying to unmute but no audio track exists, enable audio first!
+        if (localAudioTrack == null && !muted) {
+            Log.d(TAG, "🎙️ First unmute detected - enabling audio...")
+            enableAudioAfterJoining()
+            isMuted = false
+            return
+        }
+        
         isMuted = muted
-        localAudioTrack?.setEnabled(!muted)
-        Log.d(TAG, if (muted) "🔇 Muted" else "🔊 Unmuted")
+        
+        if (localAudioTrack != null) {
+            localAudioTrack?.setEnabled(!muted)
+            
+            // Notify server about mute status change
+            currentRoomId?.let { roomId ->
+                socket?.emit("mute-status", JSONObject().apply {
+                    put("roomId", roomId)
+                    put("isMuted", muted)
+                })
+            }
+            
+            Log.d(TAG, if (muted) "🔇 Muted" else "🔊 Unmuted")
+        } else {
+            Log.d(TAG, "⚠️ No audio track yet")
+        }
     }
 
     fun isMuted(): Boolean = isMuted

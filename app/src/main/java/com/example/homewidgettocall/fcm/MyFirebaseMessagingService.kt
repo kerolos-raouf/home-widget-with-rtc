@@ -13,6 +13,8 @@ import com.example.homewidgettocall.widget.AudioCallService
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import androidx.core.content.edit
+import com.example.homewidgettocall.widget.AudioCallService.Companion.CALLER_NAME
+import com.example.homewidgettocall.widget.AudioCallService.Companion.EXTRA_AUTO_JOIN_MUTED
 
 /**
  * Firebase Messaging Service for handling push notifications
@@ -271,18 +273,24 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     
     /**
      * Auto-join call when receiving FCM notification
-     * Joins in RECEIVE-ONLY mode (no mic = no permission needed!)
+     * Joins WITHOUT requesting microphone permission (Google Meet style!)
      */
     private fun autoJoinCall(serverUrl: String, roomId: String, callerName: String) {
-        Log.d(TAG, "🤫 Auto-joining call SILENTLY (receive-only mode)")
+        Log.d(TAG, "🤫 Auto-joining call SILENTLY (no mic - Google Meet style)")
         
-        // Start AudioCallService in RECEIVE-ONLY mode
-        // This starts foreground service WITHOUT microphone type = NO permission needed!
-        AudioCallService.startCallReceiveOnly(
-            this, serverUrl, roomId
-        )
+        // Start AudioCallService WITHOUT calling startAudioCall()
+        // This means localAudioTrack stays null = no permission needed!
+        val intent = Intent(this, AudioCallService::class.java).apply {
+            action = AudioCallService.ACTION_START_CALL
+            putExtra(AudioCallService.EXTRA_ROOM_ID, roomId)
+            putExtra(AudioCallService.EXTRA_SERVER_URL, serverUrl)
+            putExtra(CALLER_NAME, callerName)
+            putExtra(EXTRA_AUTO_JOIN_MUTED, true)  // Flag to skip audio initialization
+        }
         
-        Log.d(TAG, "✅ Joined in receive-only mode - listening to audio")
+        startForegroundService(intent)
+        
+        Log.d(TAG, "✅ Joined WITHOUT mic - will enable when user unmutes")
     }
     
     /**

@@ -36,6 +36,7 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
     private var isConnected = false
     private var isInCall = false
     private var currentRoomId: String? = null
+    private var joinedMuted = false  // Track if joined without mic
 
     inner class AudioCallBinder : Binder() {
         fun getService(): AudioCallService = this@AudioCallService
@@ -93,14 +94,26 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val autoJoinMuted = intent?.getBooleanExtra(EXTRA_AUTO_JOIN_MUTED, false) ?: false
+        
         // Ensure service is in foreground for all actions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    createNotification("Processing...", ""),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                )
+                if (autoJoinMuted) {
+                    // Auto-join muted: Start WITHOUT microphone type = NO permission!
+                    startForeground(
+                        NOTIFICATION_ID,
+                        createNotification("Joining...", "Muted (Google Meet style)")
+                    )
+                    Log.d(TAG, "🔇 Starting WITHOUT microphone type (no permission needed)")
+                } else {
+                    // Normal call: WITH microphone type
+                    startForeground(
+                        NOTIFICATION_ID,
+                        createNotification("Processing...", ""),
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    )
+                }
             } else {
                 startForeground(
                     NOTIFICATION_ID,
@@ -115,7 +128,7 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
             ACTION_START_CALL -> {
                 val roomId = intent.getStringExtra(EXTRA_ROOM_ID) ?: return START_NOT_STICKY
                 val serverUrl = intent.getStringExtra(EXTRA_SERVER_URL) ?: return START_NOT_STICKY
-                startCall(serverUrl, roomId)
+                startCall(serverUrl, roomId, autoJoinMuted)
             }
 
             ACTION_END_CALL -> {
@@ -130,8 +143,10 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
         return START_STICKY
     }
 
-    private fun startCall(serverUrl: String, roomId: String) {
-        Log.d(TAG, "Starting call to room: $roomId")
+    private fun startCall(serverUrl: String, roomId: String, autoJoinMuted: Boolean = false) {
+        Log.d(TAG, "Starting call to room: $roomId (muted=$autoJoinMuted)")
+        
+        this.joinedMuted = autoJoinMuted
 
         // Check if already connected to this room
         if (audioClient != null && currentRoomId == roomId && isConnected) {
@@ -148,7 +163,7 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
         }
 
         // Update notification (already in foreground from onStartCommand)
-        updateNotification("Connecting...", "")
+        updateNotification("Connecting...", if (autoJoinMuted) "Muted" else "")
 
         // Initialize NEW WebRTC client
         audioClient = AudioOnlyWebRTCClient(this, serverUrl, this)
@@ -159,16 +174,26 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
 
     private fun actuallyJoinRoom() {
         currentRoomId?.let { roomId ->
-            // IMPORTANT: Start audio FIRST, then join room
-            // This ensures we have our audio track ready before anyone tries to connect
-            Log.d(TAG, "Starting audio BEFORE joining room")
-            audioClient?.startAudioCall()
-            
-            // Small delay to ensure audio is initialized
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                Log.d(TAG, "Now joining room: $roomId")
-                audioClient?.joinRoom(roomId)
-            }, 500)
+            if (joinedMuted) {
+                // Joined MUTED: Skip startAudioCall() = NO permission needed!
+                Log.d(TAG, "🔇 Joining room WITHOUT microphone (Google Meet style)")
+                
+                // Just join the room without audio
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    Log.d(TAG, "Joining room: $roomId (muted)")
+                    audioClient?.joinRoom(roomId)
+                }, 500)
+            } else {
+                // Normal call: Start audio FIRST, then join room
+                Log.d(TAG, "🎙️ Starting audio BEFORE joining room")
+                audioClient?.startAudioCall()
+                
+                // Small delay to ensure audio is initialized
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    Log.d(TAG, "Now joining room: $roomId")
+                    audioClient?.joinRoom(roomId)
+                }, 500)
+            }
         }
     }
 
@@ -222,7 +247,11 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
 
     override fun onJoinedRoom(roomId: String) {
         Log.d(TAG, "✅ Joined room: $roomId")
-        updateNotification("In room: $roomId", "Waiting for caller...")
+        if (joinedMuted) {
+            updateNotification("In room (muted): $roomId", "Tap to unmute")
+        } else {
+            updateNotification("In room: $roomId", "Waiting for caller...")
+        }
     }
 
     override fun onUserJoined(userId: String) {
@@ -368,6 +397,8 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
         const val EXTRA_ROOM_ID = "room_id"
         const val EXTRA_SERVER_URL = "server_url"
         const val EXTRA_CALL_STATE = "call_state"
+        const val EXTRA_AUTO_JOIN_MUTED = "auto_join_muted"
+        const val CALLER_NAME = "caller_name"
 
         const val STATE_CONNECTING = 0
         const val STATE_IN_CALL = 1
