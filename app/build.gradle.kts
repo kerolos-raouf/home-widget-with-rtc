@@ -85,4 +85,6 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.messaging)
     implementation(libs.google.auth.library.oauth2.http)
+
+    implementation(libs.androidx.work.runtime.ktx)
 }

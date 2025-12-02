@@ -11,8 +11,14 @@ import com.example.homewidgettocall.R
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import androidx.core.content.edit
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.example.homewidgettocall.audio.AudioPlaybackService
+import com.example.homewidgettocall.audio.AudioPlaybackService.Companion.EXTRA_MESSAGE_ID
+import com.example.homewidgettocall.audio.AudioPlaybackService.Companion.EXTRA_SENDER_ID
 import com.example.homewidgettocall.widget.WidgetReceiver
+import com.example.homewidgettocall.worker.AudioDownloadWorker
 
 /**
  * Firebase Messaging Service for handling push notifications
@@ -33,7 +39,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "📱 New FCM Token: $token")
-        
+
         // Save token locally
         saveTokenLocally(token)
     }
@@ -43,9 +49,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
      */
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        
+
         Log.d(TAG, "📨 Message received from: ${message.from}")
-        
+
         // Check if message contains data payload
         if (message.data.isNotEmpty()) {
             Log.d(TAG, "Message data: ${message.data}")
@@ -67,7 +73,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
      */
     private fun handleDataMessage(data: Map<String, String>) {
         val type = data["type"]
-        
+
         when (type) {
             "audio_message" -> {
                 // Handle incoming audio message
@@ -75,25 +81,29 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 val senderId = data["sender_id"] ?: "Unknown"
                 val size = data["size"] ?: "0"
                 val duration = data["duration"] ?: "0"
-                
+
                 Log.d(TAG, "🎙️ Audio message received: $messageId from $senderId")
                 Log.d(TAG, "Size: $size bytes, Duration: ${duration}s")
-                
+
                 // Auto-download and play audio
-                AudioPlaybackService.downloadAndPlay(
-                    this, 
-                    messageId,
-                    WidgetReceiver.Companion.DEFAULT_SERVER_URL,
-                    senderId
-                )
+                val work = OneTimeWorkRequestBuilder<AudioDownloadWorker>()
+                    .setInputData(
+                        workDataOf(
+                            EXTRA_MESSAGE_ID to messageId,
+                            EXTRA_SENDER_ID to senderId
+                        )
+                    )
+                    .build()
+
+                WorkManager.getInstance(applicationContext).enqueue(work)
             }
-            
+
             "message" -> {
                 val title = data["title"] ?: "New Message"
                 val body = data["body"] ?: ""
                 showNotification(title, body)
             }
-            
+
             else -> {
                 Log.w(TAG, "Unknown message type: $type")
                 // Show generic notification
@@ -162,18 +172,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     companion object {
         private const val TAG = "FCMService"
-        
+
         // Notification channels
         private const val DEFAULT_CHANNEL_ID = "default_channel"
-        
+
         // Notification IDs
         private const val GENERAL_NOTIFICATION_ID = 2002
-        
+
         /**
          * Get saved FCM token
          */
         fun getSavedToken(context: android.content.Context): String? {
-            val prefs = context.getSharedPreferences("fcm_prefs", android.content.Context.MODE_PRIVATE)
+            val prefs =
+                context.getSharedPreferences("fcm_prefs", android.content.Context.MODE_PRIVATE)
             return prefs.getString("fcm_token", null)
         }
     }

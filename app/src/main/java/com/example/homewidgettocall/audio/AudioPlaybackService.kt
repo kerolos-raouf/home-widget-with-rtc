@@ -1,11 +1,18 @@
 package com.example.homewidgettocall.audio
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
 import android.os.IBinder
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.example.homewidgettocall.MainActivity
+import com.example.homewidgettocall.R
 import java.io.File
 import java.io.FileOutputStream
 
@@ -21,6 +28,7 @@ class AudioPlaybackService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "AudioPlaybackService created")
+        createNotificationChannel()
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -53,6 +61,7 @@ class AudioPlaybackService : Service() {
     
     private fun downloadAndPlayAudio(messageId: String, serverUrl: String, senderId: String) {
         Log.d(TAG, "Connecting to server: $serverUrl")
+        startForeground(1, createNotification("Connecting to server...", "Please wait..."))
         
         audioClient = AudioMessageClient(this, serverUrl, object : AudioMessageClient.AudioMessageListener {
             override fun onConnected() {
@@ -137,6 +146,47 @@ class AudioPlaybackService : Service() {
             cleanup()
         }
     }
+
+    // Notification management
+
+    private fun createNotificationChannel() {
+        val channel = NotificationChannel(
+            "CHANNEL_ID",
+            "Audio Calls",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Ongoing audio calls"
+            setSound(null, null)
+        }
+
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(channel)
+    }
+
+    private fun createNotification(title: String, text: String = ""): Notification {
+        // Intent to open MainActivity
+        val openIntent = Intent(this, MainActivity::class.java)
+        val openPendingIntent = PendingIntent.getActivity(
+            this, 0, openIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+
+        return NotificationCompat.Builder(this, "CHANNEL_ID")
+            .setContentTitle(title)
+            .setContentText(text)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(openPendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
+    private fun updateNotification(title: String, text: String = "") {
+        val notification = createNotification(title, text)
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(0, notification)
+    }
     
     private fun cleanup() {
         mediaPlayer?.release()
@@ -180,7 +230,7 @@ class AudioPlaybackService : Service() {
                 putExtra(EXTRA_SERVER_URL, serverUrl)
                 putExtra(EXTRA_SENDER_ID, senderId)
             }
-            context.startService(intent)
+            context.startForegroundService(intent)
         }
     }
 }
