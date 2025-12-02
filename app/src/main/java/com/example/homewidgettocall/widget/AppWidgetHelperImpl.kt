@@ -20,10 +20,7 @@ class AppWidgetHelperImpl(
 
     override fun getWidgetIdList(): List<Int> {
         val squareWidgetIds = appWidgetManager.getAppWidgetIds(squareWidgetComponent)
-        val widgetIds = squareWidgetIds
-        return listOf(
-            *widgetIds.toTypedArray()
-        )
+        return squareWidgetIds.toList()
     }
 
     override fun updateWidgetData(widgetId: Int) {
@@ -31,17 +28,21 @@ class AppWidgetHelperImpl(
         appWidgetManager.updateAppWidget(widgetId, remoteViews)
     }
 
-    private fun getRemoteViewsWithData(
-        widgetId: Int,
-    ) = RemoteViews(context.packageName, R.layout.widget_layout).apply {
-        setReceiverPendingIntent(widgetId)
-    }
+    private fun getRemoteViewsWithData(widgetId: Int) = 
+        RemoteViews(context.packageName, R.layout.widget_layout).apply {
+            setRecordingButton(widgetId)
+        }
 
-    private fun RemoteViews.setReceiverPendingIntent(widgetId: Int) {
+    /**
+     * Set up the recording button to start/stop recording
+     * When recording stops, it will automatically send the audio
+     */
+    private fun RemoteViews.setRecordingButton(widgetId: Int) {
         val intent = Intent(context, WidgetReceiver::class.java).apply {
             action = RECORD_A_VOICE
             putExtra(WIDGET_ID, widgetId)
         }
+        
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             widgetId,
@@ -49,58 +50,13 @@ class AppWidgetHelperImpl(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        Log.d("UsageWidgetReceiver", "onReceive: Setting pending intent")
+        Log.d(TAG, "Setting recording button pending intent for widget: $widgetId")
 
+        // Set the click listener on the recording button
         setOnClickPendingIntent(R.id.btn_start_recording, pendingIntent)
-        
-        // WebRTC Call buttons
-        setWebRTCCallButtons(widgetId)
     }
     
-    private fun RemoteViews.setWebRTCCallButtons(widgetId: Int) {
-        // TODO: Replace with your actual server URL
-        val serverUrl = "https://synostotic-maverick-infinitesimally.ngrok-free.dev"
-        val roomId = "widget-room"
-        
-        // Start call button
-        val startCallIntent = Intent(context, WidgetReceiver::class.java).apply {
-            action = ACTION_START_WEBRTC_CALL
-            putExtra(WIDGET_ID, widgetId)
-            putExtra(SERVER_URL_EXTRA, serverUrl)
-            putExtra(ROOM_ID_EXTRA, roomId)
-        }
-        val startCallPendingIntent = PendingIntent.getBroadcast(
-            context,
-            widgetId + 100,
-            startCallIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        setOnClickPendingIntent(R.id.btn_start_call, startCallPendingIntent)
-        
-        // End call button
-        val endCallIntent = Intent(context, WidgetReceiver::class.java).apply {
-            action = ACTION_END_WEBRTC_CALL
-            putExtra(WIDGET_ID, widgetId)
-        }
-        val endCallPendingIntent = PendingIntent.getBroadcast(
-            context,
-            widgetId + 200,
-            endCallIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        setOnClickPendingIntent(R.id.btn_end_call, endCallPendingIntent)
-        
-        // Toggle mute button
-        val muteIntent = Intent(context, WidgetReceiver::class.java).apply {
-            action = ACTION_TOGGLE_MUTE
-            putExtra(WIDGET_ID, widgetId)
-        }
-        val mutePendingIntent = PendingIntent.getBroadcast(
-            context,
-            widgetId + 300,
-            muteIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        setOnClickPendingIntent(R.id.btn_toggle_mute, mutePendingIntent)
+    companion object {
+        private const val TAG = "AppWidgetHelper"
     }
 }

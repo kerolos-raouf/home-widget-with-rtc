@@ -6,80 +6,35 @@
     android:orientation="vertical"
     android:padding="16dp"
     android:background="@color/white"
-    android:theme="@style/Theme.Material3.DynamicColors.DayNight">
+    android:gravity="center">
 
-
-    <!-- Voice recording controls -->
+    <!-- Voice recording button -->
     <LinearLayout
         android:id="@+id/voice_controls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_marginTop="12dp">
+        android:gravity="center">
 
-        <!-- Start recording button -->
+        <!-- Record/Send button -->
         <ImageView
             android:id="@+id/btn_start_recording"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
             android:src="@drawable/ic_microphone"
-            android:contentDescription="Start Recording"
-            android:visibility="visible"
-            android:padding="8dp" />
-
-        <!-- Stop recording button -->
-        <ImageView
-            android:id="@+id/btn_stop_recording"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_stop"
-            android:contentDescription="Stop Recording"
-            android:visibility="gone"
-            android:padding="8dp"
-            android:layout_marginStart="16dp"/>
+            android:contentDescription="Record and Send Audio"
+            android:padding="12dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
-    <!-- WebRTC Call controls -->
-    <LinearLayout
-        android:id="@+id/call_controls"
-        android:layout_width="match_parent"
+    <!-- Status text -->
+    <TextView
+        android:id="@+id/txt_status"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_marginTop="12dp">
-
-        <!-- Start call button -->
-        <Button
-            android:id="@+id/btn_start_call"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Call"
-            android:backgroundTint="#4CAF50"
-            android:textColor="#FFFFFF"
-            android:padding="8dp" />
-
-        <!-- Mute button -->
-        <Button
-            android:id="@+id/btn_toggle_mute"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Mute"
-            android:backgroundTint="#2196F3"
-            android:textColor="#FFFFFF"
-            android:padding="8dp"
-            android:layout_marginStart="8dp"/>
-
-        <!-- End call button -->
-        <Button
-            android:id="@+id/btn_end_call"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="End Call"
-            android:backgroundTint="#F44336"
-            android:textColor="#FFFFFF"
-            android:padding="8dp"
-            android:layout_marginStart="8dp"/>            
-    </LinearLayout>
+        android:text="Tap to record audio"
+        android:textSize="12sp"
+        android:textColor="#666666"
+        android:layout_marginTop="8dp" />
 
 </LinearLayout>

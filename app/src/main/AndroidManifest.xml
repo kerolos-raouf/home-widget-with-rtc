@@ -58,11 +58,9 @@
             android:foregroundServiceType="microphone"
             android:exported="false" />
 
-        <!-- Audio Call Service for WebRTC -->
-        <!-- NOTE: foregroundServiceType NOT set in manifest - we set it dynamically in code
-             to allow starting WITHOUT microphone permission (Google Meet style) -->
+        <!-- Audio Playback Service for audio messages -->
         <service
-            android:name=".widget.AudioCallService"
+            android:name=".audio.AudioPlaybackService"
             android:enabled="true"
             android:exported="false" />
 
@@ -74,15 +72,6 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-
-        <!-- Receiver for call actions (decline, etc.) -->
-        <receiver
-            android:name=".fcm.CallActionReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.example.homewidgettocall.DECLINE_CALL" />
-            </intent-filter>
-        </receiver>
 
         <!-- Firebase default notification channel (optional) -->
         <meta-data

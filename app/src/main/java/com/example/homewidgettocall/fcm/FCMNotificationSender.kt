@@ -45,7 +45,7 @@ object FCMNotificationSender {
             Log.d(TAG, "✅ Access token obtained")
             accessToken
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error getting access token", e)
+            Log.e(TAG, "❌ Error getting access token $e", e)
             null
         }
     }
@@ -181,6 +181,93 @@ object FCMNotificationSender {
                 responseCode == 200
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error sending call ended notification", e)
+                false
+            }
+        }
+    }
+    
+    /**
+     * Send audio message notification to recipient
+     */
+    suspend fun sendAudioMessageNotification(
+        context: Context,
+        targetToken: String,
+        messageId: String,
+        senderId: String,
+        size: String,
+        duration: String,
+        serverUrl: String
+    ): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "📤 Sending audio message notification to: ${targetToken.take(20)}...")
+
+                // Get OAuth2 access token
+                val accessToken = getAccessToken(context)
+                if (accessToken == null) {
+                    Log.e(TAG, "❌ Failed to get access token")
+                    return@withContext false
+                }
+
+                // Build FCM v1 message payload
+                val message = JSONObject().apply {
+                    put("message", JSONObject().apply {
+                        put("token", targetToken)
+
+                        // Data payload for audio message
+                        put("data", JSONObject().apply {
+                            put("type", "audio_message")
+                            put("message_id", messageId)
+                            put("sender_id", senderId)
+                            put("size", size)
+                            put("duration", duration)
+                            put("server_url", serverUrl)
+                        })
+
+                        // Android specific config - HIGH PRIORITY for background start!
+                        put("android", JSONObject().apply {
+                            put("priority", "HIGH")
+                        })
+                    })
+                }
+
+                Log.d(TAG, "Payload: $message")
+
+                // Send HTTP request
+                val connection = URL(FCM_URL).openConnection() as HttpURLConnection
+                connection.apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Authorization", "Bearer $accessToken")
+                    setRequestProperty("Content-Type", "application/json; UTF-8")
+                    doOutput = true
+                }
+
+                // Write payload
+                OutputStreamWriter(connection.outputStream).use { writer ->
+                    writer.write(message.toString())
+                    writer.flush()
+                }
+
+                // Get response
+                val responseCode = connection.responseCode
+                val responseMessage = if (responseCode == 200) {
+                    connection.inputStream.bufferedReader().use { it.readText() }
+                } else {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "No error message"
+                }
+
+                Log.d(TAG, "FCM Response Code: $responseCode")
+                Log.d(TAG, "FCM Response: $responseMessage")
+
+                if (responseCode == 200) {
+                    Log.d(TAG, "✅ Audio message notification sent successfully!")
+                    true
+                } else {
+                    Log.e(TAG, "❌ Failed to send notification: $responseCode - $responseMessage")
+                    false
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error sending audio message notification", e)
                 false
             }
         }

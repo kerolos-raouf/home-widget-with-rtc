@@ -16,16 +16,12 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.homewidgettocall.fcm.FCMHelper
 import com.example.homewidgettocall.model.VoiceRecording
-import com.example.homewidgettocall.widget.AudioCallService
-import com.example.homewidgettocall.widget.AudioCallService.Companion.EXTRA_AUTO_JOIN_MUTED
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
     private var mediaPlayer: MediaPlayer? = null
-
     lateinit var adapter: VoiceRecordingsAdapter
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +33,7 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        // Request permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ActivityCompat.requestPermissions(
                 this,
@@ -53,10 +50,8 @@ class MainActivity : AppCompatActivity() {
 
         // Initialize FCM and get token
         initializeFCM()
-        
-        // Check if we should auto-join a call from notification
-        handleIncomingCallIntent()
 
+        // Setup recordings list
         val recordings = getRecordedVoices(this)
 
         adapter = VoiceRecordingsAdapter(
@@ -87,34 +82,10 @@ class MainActivity : AppCompatActivity() {
             if (token != null) {
                 Log.d(TAG, "✅ FCM Token obtained: $token")
                 Toast.makeText(this, "FCM Token: ${token.take(20)}...", Toast.LENGTH_SHORT).show()
-                
-                // TODO: Send token to your server
-                // FCMHelper.sendTokenToServer(token, userId = "your_user_id")
             } else {
                 Log.e(TAG, "❌ Failed to get FCM token")
                 Toast.makeText(this, "Failed to get FCM token", Toast.LENGTH_SHORT).show()
             }
-        }
-        
-        // Optional: Subscribe to topics for group notifications
-        // FCMHelper.subscribeToTopic("all_users")
-    }
-    
-    /**
-     * Handle incoming call intent from FCM notification
-     */
-    private fun handleIncomingCallIntent() {
-        val autoJoin = intent.getBooleanExtra(EXTRA_AUTO_JOIN_MUTED, false)
-        if (autoJoin) {
-            val callerName = intent.getStringExtra("caller_name") ?: "Someone"
-            val roomId = intent.getStringExtra("room_id") ?: return
-            val serverUrl = intent.getStringExtra("server_url") ?: return
-            
-            Log.d(TAG, "📞 Auto-joining call from: $callerName")
-            Toast.makeText(this, "Joining call from $callerName...", Toast.LENGTH_SHORT).show()
-            
-            // Start the call service (permission will be requested if needed)
-            AudioCallService.startCall(this, serverUrl, roomId)
         }
     }
 
@@ -134,7 +105,7 @@ class MainActivity : AppCompatActivity() {
 
     fun playRecording(file: File) {
         if (!file.exists()) {
-            Log.e("MainActivity", "File does not exist: ${file.absolutePath}")
+            Log.e(TAG, "File does not exist: ${file.absolutePath}")
             return
         }
 
@@ -144,10 +115,10 @@ class MainActivity : AppCompatActivity() {
             setDataSource(file.absolutePath)
             setOnPreparedListener { start() }
             setOnErrorListener { mp, what, extra ->
-                Log.e("MainActivity", "MediaPlayer error: $what, $extra")
+                Log.e(TAG, "MediaPlayer error: $what, $extra")
                 true
             }
-            prepareAsync()  // safer than prepare()
+            prepareAsync()
         }
     }
 
