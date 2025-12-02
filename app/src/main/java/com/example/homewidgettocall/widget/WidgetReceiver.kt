@@ -76,7 +76,6 @@ class WidgetReceiver : BroadcastReceiver() {
         var audioClient: AudioMessageClient? = null
         
         audioClient = AudioMessageClient(
-            context,
             serverUrl,
             object : AudioMessageClient.AudioMessageListener {
                 override fun onConnected() {

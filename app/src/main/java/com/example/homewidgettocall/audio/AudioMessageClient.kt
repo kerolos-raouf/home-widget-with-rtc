@@ -12,7 +12,6 @@ import java.io.File
  * Client for uploading and downloading audio messages via Socket.IO
  */
 class AudioMessageClient(
-    private val context: Context,
     private val serverUrl: String,
     private val listener: AudioMessageListener
 ) {
@@ -33,8 +32,8 @@ class AudioMessageClient(
             val options = IO.Options().apply {
                 reconnection = true
                 reconnectionDelay = 1000
-                reconnectionAttempts = 5
-                timeout = 20000
+                reconnectionAttempts = 10
+                timeout = 100000
                 transports = arrayOf("websocket")
                 forceNew = true
             }
@@ -134,23 +133,23 @@ class AudioMessageClient(
             listener.onDownloadFailed("Not connected to server")
             return
         }
-        
+
         val data = JSONObject().apply {
             put("messageId", messageId)
         }
-        
+
         Log.d(TAG, "📥 Downloading audio: $messageId")
-        
-        socket?.emit("request-audio-download", data, io.socket.client.Ack { args ->
+
+        socket?.emit("request-audio-download", data, Ack { args ->
             try {
                 val response = args[0] as JSONObject
                 val success = response.getBoolean("success")
-                
+
                 if (success) {
                     val audioData = response.getString("audioData")
                     val duration = response.optInt("duration", 0)
                     val senderId = response.optString("senderId", "unknown")
-                    
+
                     Log.d(TAG, "✅ Download successful: $messageId (${audioData.length} chars, ${duration}s)")
                     listener.onDownloadSuccess(messageId, audioData, duration)
                 } else {

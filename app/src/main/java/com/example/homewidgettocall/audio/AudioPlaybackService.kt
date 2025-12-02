@@ -47,7 +47,7 @@ class AudioPlaybackService : Service() {
                 }
                 
                 Log.d(TAG, "🎙️ Download and play audio message: $messageId from $senderId")
-                downloadAndPlayAudio(messageId, serverUrl, senderId ?: "unknown")
+                //downloadAndPlayAudio(messageId, serverUrl, senderId ?: "unknown")
             }
             
             else -> {
@@ -63,10 +63,10 @@ class AudioPlaybackService : Service() {
         Log.d(TAG, "Connecting to server: $serverUrl")
         startForeground(1, createNotification("Connecting to server...", "Please wait..."))
         
-        audioClient = AudioMessageClient(this, serverUrl, object : AudioMessageClient.AudioMessageListener {
+        audioClient = AudioMessageClient(serverUrl, object : AudioMessageClient.AudioMessageListener {
             override fun onConnected() {
                 Log.d(TAG, "✅ Connected to server, downloading audio...")
-                audioClient?.downloadAudio(messageId)
+                //audioClient?.downloadAudio(messageId)
             }
             
             override fun onDisconnected() {
