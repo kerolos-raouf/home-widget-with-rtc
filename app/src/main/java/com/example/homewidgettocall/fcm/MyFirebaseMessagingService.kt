@@ -84,8 +84,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 
                 // Automatically answer the call (no notification)
                 Log.d(TAG, "🤖 Auto-answering call...")
-                autoJoinCall(serverUrl, roomId, callerName)
-                //showIncomingCallNotification(callerName, callerId, roomId, serverUrl)
+                //autoJoinCall(serverUrl, roomId, callerName)
+                showIncomingCallNotification(callerName, callerId, roomId, serverUrl)
             }
             
             "call_ended" -> {

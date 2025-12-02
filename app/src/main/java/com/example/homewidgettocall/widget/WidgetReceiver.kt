@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.example.homewidgettocall.fcm.FCMNotificationSender
+import com.example.homewidgettocall.widget.AudioCallService.Companion.EXTRA_AUTO_JOIN_MUTED
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -45,8 +46,27 @@ class WidgetReceiver : BroadcastReceiver() {
                 val roomId = intent.getStringExtra(ROOM_ID_EXTRA) ?: return
                 Log.d(TAG, "📞 Starting WebRTC call to room: $roomId")
                 
-                // Start the call on THIS device
-                AudioCallService.startCall(context, serverUrl, roomId)
+                // Check if we have microphone permission
+                val hasMicPermission = android.content.pm.PackageManager.PERMISSION_GRANTED == 
+                    context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                
+                if (hasMicPermission) {
+                    // Has permission: Start normally WITH mic
+                    Log.d(TAG, "✅ Has mic permission - starting WITH audio")
+                    AudioCallService.startCall(context, serverUrl, roomId)
+                } else {
+                    // No permission: Start MUTED (Google Meet style)
+                    Log.d(TAG, "⚠️ No mic permission - starting MUTED (will request on unmute)")
+                    
+                    // Start muted - will request permission when user unmutes
+                    val serviceIntent = Intent(context, AudioCallService::class.java).apply {
+                        action = AudioCallService.ACTION_START_CALL
+                        putExtra(AudioCallService.EXTRA_SERVER_URL, serverUrl)
+                        putExtra(AudioCallService.EXTRA_ROOM_ID, roomId)
+                        putExtra(EXTRA_AUTO_JOIN_MUTED, true)  // Join muted!
+                    }
+                    context.startForegroundService(serviceIntent)
+                }
                 
                 // Send FCM notification to TARGET device
                 sendCallNotificationToTarget(context, serverUrl, roomId)

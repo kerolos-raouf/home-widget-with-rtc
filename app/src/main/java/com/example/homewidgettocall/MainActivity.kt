@@ -16,6 +16,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.homewidgettocall.fcm.FCMHelper
 import com.example.homewidgettocall.model.VoiceRecording
+import com.example.homewidgettocall.widget.AudioCallService
+import com.example.homewidgettocall.widget.AudioCallService.Companion.EXTRA_AUTO_JOIN_MUTED
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
@@ -102,7 +104,7 @@ class MainActivity : AppCompatActivity() {
      * Handle incoming call intent from FCM notification
      */
     private fun handleIncomingCallIntent() {
-        val autoJoin = intent.getBooleanExtra("auto_join_call", false)
+        val autoJoin = intent.getBooleanExtra(EXTRA_AUTO_JOIN_MUTED, false)
         if (autoJoin) {
             val callerName = intent.getStringExtra("caller_name") ?: "Someone"
             val roomId = intent.getStringExtra("room_id") ?: return
@@ -112,7 +114,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Joining call from $callerName...", Toast.LENGTH_SHORT).show()
             
             // Start the call service (permission will be requested if needed)
-            com.example.homewidgettocall.widget.AudioCallService.startCall(this, serverUrl, roomId)
+            AudioCallService.startCall(this, serverUrl, roomId)
         }
     }
 

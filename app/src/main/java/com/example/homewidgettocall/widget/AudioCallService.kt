@@ -96,6 +96,8 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val autoJoinMuted = intent?.getBooleanExtra(EXTRA_AUTO_JOIN_MUTED, false) ?: false
         
+        Log.d(TAG, "onStartCommand: action=${intent?.action}, autoJoinMuted=$autoJoinMuted")
+        
         // Ensure service is in foreground for all actions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -412,6 +414,7 @@ class AudioCallService : Service(), AudioOnlyWebRTCClient.AudioCallListener {
                 action = ACTION_START_CALL
                 putExtra(EXTRA_SERVER_URL, serverUrl)
                 putExtra(EXTRA_ROOM_ID, roomId)
+                putExtra(EXTRA_AUTO_JOIN_MUTED, false)  // Start WITH mic (requires permission!)
             }
 
             context.startForegroundService(intent)

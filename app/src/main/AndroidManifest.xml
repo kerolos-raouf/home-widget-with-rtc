@@ -59,11 +59,12 @@
             android:exported="false" />
 
         <!-- Audio Call Service for WebRTC -->
+        <!-- NOTE: foregroundServiceType NOT set in manifest - we set it dynamically in code
+             to allow starting WITHOUT microphone permission (Google Meet style) -->
         <service
             android:name=".widget.AudioCallService"
             android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="microphone" />
+            android:exported="false" />
 
         <!-- Firebase Cloud Messaging Service -->
         <service
