@@ -23,8 +23,8 @@ class SignUpActivity : AppCompatActivity() {
     private lateinit var btnBack: ImageButton
     private lateinit var etSignUpEmail: EditText
     private lateinit var etSignUpPassword: EditText
-    private lateinit var btnNextEmail: Button
-    private lateinit var btnCompleteSignUp: Button
+    private lateinit var btnNextEmail: ImageButton
+    private lateinit var btnCompleteSignUp: ImageButton
     private lateinit var pageEmail: LinearLayout
     private lateinit var pagePassword: LinearLayout
     private var email: String = ""

@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.RemoteViews
+import com.example.homewidgettocall.LoginActivity
 import com.example.homewidgettocall.R
 import com.example.homewidgettocall.data.PreferencesHelper
 
@@ -38,26 +39,31 @@ class AppWidgetHelperImpl(
 
     /**
      * Set the friend name from SharedPreferences
+     * Shows "Login" if user is logged out
      */
     private fun RemoteViews.setFriendName() {
-        val token = PreferencesHelper.getFirstFriendToken(context)
-        val friendName = if (token != null) {
-            // Extract email from SharedPreferences or show "First Friend"
-            getFirstFriendEmail() ?: "First Friend"
+        // Check if user is logged in
+        val isLoggedIn = PreferencesHelper.isLoggedIn(context)
+        
+        val friendName = if (!isLoggedIn) {
+            // User is logged out, show "Login"
+            "Login"
         } else {
-            "Add a Friend"
+            // User is logged in, check for friend
+            val friendEmail = PreferencesHelper.getFirstFriendEmail(context)
+            val token = PreferencesHelper.getFirstFriendToken(context)
+            
+            if (friendEmail != null && token != null) {
+                // Has friend, show email
+                friendEmail
+            } else {
+                // No friend, show prompt
+                "Add a Friend"
+            }
         }
         
         setTextViewText(R.id.txt_friend_name, friendName)
-        Log.d(TAG, "Widget friend name set to: $friendName")
-    }
-
-    /**
-     * Get the first friend's email from SharedPreferences
-     */
-    private fun getFirstFriendEmail(): String? {
-        val prefs = context.getSharedPreferences("HomeWidgetToCallPrefs", Context.MODE_PRIVATE)
-        return prefs.getString("first_friend_email", null)
+        Log.d(TAG, "Widget friend name set to: $friendName (Logged in: $isLoggedIn)")
     }
 
     /**
@@ -84,11 +90,22 @@ class AppWidgetHelperImpl(
     }
 
     /**
-     * Set up the edit button to open the app
+     * Set up the edit button
+     * Opens LoginActivity if logged out, MainActivity if logged in
      */
     private fun RemoteViews.setEditButton() {
-        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        val isLoggedIn = PreferencesHelper.isLoggedIn(context)
+        
+        val intent = if (isLoggedIn) {
+            // User is logged in, open MainActivity
+            context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+        } else {
+            // User is logged out, open LoginActivity
+            Intent(context, LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
         }
         
         val pendingIntent = PendingIntent.getActivity(
@@ -99,7 +116,7 @@ class AppWidgetHelperImpl(
         )
 
         setOnClickPendingIntent(R.id.btn_edit, pendingIntent)
-        Log.d(TAG, "Edit button configured to open app")
+        Log.d(TAG, "Edit button configured (Logged in: $isLoggedIn)")
     }
     
     companion object {

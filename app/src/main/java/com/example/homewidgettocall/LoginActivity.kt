@@ -1,16 +1,19 @@
 package com.example.homewidgettocall
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.util.Log
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.homewidgettocall.data.PreferencesHelper
+import com.example.homewidgettocall.widget.WidgetProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -106,6 +109,10 @@ class LoginActivity : AppCompatActivity() {
                     // Sign in success
                     Log.d(TAG, "signInWithEmail:success")
                     val user = auth.currentUser
+                    
+                    // Set logged in state
+                    PreferencesHelper.setLoggedIn(this, true)
+                    Log.d(TAG, "User logged in state saved")
                     
                     Toast.makeText(
                         this,

@@ -7,6 +7,8 @@ object PreferencesHelper {
     
     private const val PREFS_NAME = "HomeWidgetToCallPrefs"
     private const val KEY_FIRST_FRIEND_FCM_TOKEN = "first_friend_fcm_token"
+    private const val KEY_FIRST_FRIEND_EMAIL = "first_friend_email"
+    private const val KEY_IS_LOGGED_IN = "is_logged_in"
     
     private fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -31,6 +33,24 @@ object PreferencesHelper {
     }
     
     /**
+     * Save the first friend's email to SharedPreferences
+     */
+    fun saveFirstFriendEmail(context: Context, email: String) {
+        getPreferences(context).edit().apply {
+            putString(KEY_FIRST_FRIEND_EMAIL, email)
+            apply()
+        }
+    }
+    
+    /**
+     * Get the first friend's email from SharedPreferences
+     * @return Email or null if not found
+     */
+    fun getFirstFriendEmail(context: Context): String? {
+        return getPreferences(context).getString(KEY_FIRST_FRIEND_EMAIL, null)
+    }
+    
+    /**
      * Clear the first friend's FCM token from SharedPreferences
      */
     fun clearFirstFriendToken(context: Context) {
@@ -45,5 +65,32 @@ object PreferencesHelper {
      */
     fun hasFirstFriendToken(context: Context): Boolean {
         return getFirstFriendToken(context) != null
+    }
+    
+    /**
+     * Set user login state
+     */
+    fun setLoggedIn(context: Context, isLoggedIn: Boolean) {
+        getPreferences(context).edit().apply {
+            putBoolean(KEY_IS_LOGGED_IN, isLoggedIn)
+            apply()
+        }
+    }
+    
+    /**
+     * Check if user is logged in
+     */
+    fun isLoggedIn(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_IS_LOGGED_IN, false)
+    }
+    
+    /**
+     * Clear all user data (logout)
+     */
+    fun clearAllData(context: Context) {
+        getPreferences(context).edit().apply {
+            clear()
+            apply()
+        }
     }
 }

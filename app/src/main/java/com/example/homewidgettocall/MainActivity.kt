@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
+import com.example.homewidgettocall.data.PreferencesHelper
 import com.example.homewidgettocall.model.Friend
 import com.example.homewidgettocall.widget.WidgetProvider
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -317,8 +318,17 @@ class MainActivity : AppCompatActivity() {
     private fun logout() {
         auth.signOut()
         
-        // Clear SharedPreferences on logout
+        // Set logged out state
+        PreferencesHelper.setLoggedIn(this, false)
+        
+        // Clear all user data
+        PreferencesHelper.clearAllData(this)
         clearFirstFriendData()
+        
+        // Update widget to show "Login"
+        updateWidget()
+        
+        Log.d(TAG, "User logged out, widget updated")
         
         val intent = Intent(this, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
