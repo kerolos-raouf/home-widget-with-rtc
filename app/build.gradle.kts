@@ -63,9 +63,6 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-    // WebRTC
-    implementation(libs.webrtc)
-
     // Socket.IO
     implementation(libs.socket.io.client)
 
