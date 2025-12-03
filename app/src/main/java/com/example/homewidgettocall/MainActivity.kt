@@ -1,5 +1,7 @@
 package com.example.homewidgettocall
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -15,6 +17,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.example.homewidgettocall.model.Friend
+import com.example.homewidgettocall.widget.WidgetProvider
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
@@ -36,6 +39,7 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "MainActivity"
         private const val PREFS_NAME = "HomeWidgetToCallPrefs"
         private const val KEY_FIRST_FRIEND_FCM_TOKEN = "first_friend_fcm_token"
+        private const val KEY_FIRST_FRIEND_EMAIL = "first_friend_email"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,19 +97,20 @@ class MainActivity : AppCompatActivity() {
                         friendsList.add(Friend(email, fcmToken))
                     }
                     
-                    // Save first friend's FCM token to SharedPreferences
+                    // Save first friend's data to SharedPreferences
                     if (friendsList.isNotEmpty()) {
-                        val firstFriendToken = friendsList[0].fcmToken
-                        saveFirstFriendToken(firstFriendToken)
-                        Log.d(TAG, "First friend FCM token saved: ${firstFriendToken.take(20)}...")
+                        val firstFriend = friendsList[0]
+                        saveFirstFriendData(firstFriend.email, firstFriend.fcmToken)
+                        Log.d(TAG, "First friend saved - Email: ${firstFriend.email}, Token: ${firstFriend.fcmToken.take(20)}...")
                     } else {
-                        // Clear token if no friends
-                        clearFirstFriendToken()
-                        Log.d(TAG, "No friends, cleared FCM token from SharedPreferences")
+                        // Clear data if no friends
+                        clearFirstFriendData()
+                        Log.d(TAG, "No friends, cleared data from SharedPreferences")
                     }
                     
                     friendsAdapter.updateFriends(friendsList)
                     updateEmptyState()
+                    updateWidget() // Update widget with new friend name
                     
                     Log.d(TAG, "Loaded ${friendsList.size} friends")
                 } else {
@@ -118,18 +123,35 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
-    private fun saveFirstFriendToken(token: String) {
+    private fun saveFirstFriendData(email: String, token: String) {
         sharedPreferences.edit().apply {
+            putString(KEY_FIRST_FRIEND_EMAIL, email)
             putString(KEY_FIRST_FRIEND_FCM_TOKEN, token)
             apply()
         }
     }
 
-    private fun clearFirstFriendToken() {
+    private fun clearFirstFriendData() {
         sharedPreferences.edit().apply {
+            remove(KEY_FIRST_FRIEND_EMAIL)
             remove(KEY_FIRST_FRIEND_FCM_TOKEN)
             apply()
         }
+    }
+
+    private fun updateWidget() {
+        val appWidgetManager = AppWidgetManager.getInstance(this)
+        val widgetIds = appWidgetManager.getAppWidgetIds(
+            ComponentName(this, WidgetProvider::class.java)
+        )
+        
+        val intent = Intent(this, WidgetProvider::class.java).apply {
+            action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds)
+        }
+        sendBroadcast(intent)
+        
+        Log.d(TAG, "Widget update broadcast sent")
     }
 
     fun getFirstFriendToken(): String? {
@@ -209,10 +231,11 @@ class MainActivity : AppCompatActivity() {
                         friendsAdapter.updateFriends(friendsList)
                         updateEmptyState()
                         
-                        // Update first friend token if this is the first friend
+                        // Update first friend data if this is the first friend
                         if (friendsList.size == 1) {
-                            saveFirstFriendToken(friendFcmToken)
-                            Log.d(TAG, "First friend added, token saved to SharedPreferences")
+                            saveFirstFriendData(friendEmail, friendFcmToken)
+                            updateWidget()
+                            Log.d(TAG, "First friend added, data saved to SharedPreferences")
                         }
                     }
                     .addOnFailureListener { e ->
@@ -262,13 +285,16 @@ class MainActivity : AppCompatActivity() {
                 // Update SharedPreferences if the removed friend was the first one
                 if (wasFirstFriend) {
                     if (friendsList.isNotEmpty()) {
-                        // Save new first friend's token
-                        saveFirstFriendToken(friendsList[0].fcmToken)
-                        Log.d(TAG, "First friend removed, updated with new first friend token")
+                        // Save new first friend's data
+                        val newFirstFriend = friendsList[0]
+                        saveFirstFriendData(newFirstFriend.email, newFirstFriend.fcmToken)
+                        updateWidget()
+                        Log.d(TAG, "First friend removed, updated with new first friend")
                     } else {
-                        // No friends left, clear token
-                        clearFirstFriendToken()
-                        Log.d(TAG, "Last friend removed, cleared token from SharedPreferences")
+                        // No friends left, clear data
+                        clearFirstFriendData()
+                        updateWidget()
+                        Log.d(TAG, "Last friend removed, cleared data from SharedPreferences")
                     }
                 }
             }
@@ -292,7 +318,7 @@ class MainActivity : AppCompatActivity() {
         auth.signOut()
         
         // Clear SharedPreferences on logout
-        clearFirstFriendToken()
+        clearFirstFriendData()
         
         val intent = Intent(this, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

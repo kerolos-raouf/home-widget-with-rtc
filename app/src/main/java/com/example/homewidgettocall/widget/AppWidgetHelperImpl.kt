@@ -8,6 +8,7 @@ import android.content.Intent
 import android.util.Log
 import android.widget.RemoteViews
 import com.example.homewidgettocall.R
+import com.example.homewidgettocall.data.PreferencesHelper
 
 const val WIDGET_ID = "widget_id"
 
@@ -30,8 +31,34 @@ class AppWidgetHelperImpl(
 
     private fun getRemoteViewsWithData(widgetId: Int) = 
         RemoteViews(context.packageName, R.layout.widget_layout).apply {
+            setFriendName()
             setRecordingButton(widgetId)
+            setEditButton()
         }
+
+    /**
+     * Set the friend name from SharedPreferences
+     */
+    private fun RemoteViews.setFriendName() {
+        val token = PreferencesHelper.getFirstFriendToken(context)
+        val friendName = if (token != null) {
+            // Extract email from SharedPreferences or show "First Friend"
+            getFirstFriendEmail() ?: "First Friend"
+        } else {
+            "Add a Friend"
+        }
+        
+        setTextViewText(R.id.txt_friend_name, friendName)
+        Log.d(TAG, "Widget friend name set to: $friendName")
+    }
+
+    /**
+     * Get the first friend's email from SharedPreferences
+     */
+    private fun getFirstFriendEmail(): String? {
+        val prefs = context.getSharedPreferences("HomeWidgetToCallPrefs", Context.MODE_PRIVATE)
+        return prefs.getString("first_friend_email", null)
+    }
 
     /**
      * Set up the recording button to start/stop recording
@@ -54,6 +81,25 @@ class AppWidgetHelperImpl(
 
         // Set the click listener on the recording button
         setOnClickPendingIntent(R.id.btn_start_recording, pendingIntent)
+    }
+
+    /**
+     * Set up the edit button to open the app
+     */
+    private fun RemoteViews.setEditButton() {
+        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        setOnClickPendingIntent(R.id.btn_edit, pendingIntent)
+        Log.d(TAG, "Edit button configured to open app")
     }
     
     companion object {
