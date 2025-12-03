@@ -18,6 +18,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // Enable multiDex for handling large dependencies
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -44,7 +47,10 @@ android {
                     "META-INF/INDEX.LIST",
                     "META-INF/LICENSE",
                     "META-INF/NOTICE",
-                    "META-INF/DEPENDENCIES"  // Fix for Google Auth library conflict
+                    "META-INF/DEPENDENCIES",
+                    "META-INF/DEPENDENCIES.txt",
+                    "META-INF/LICENSE.txt",
+                    "META-INF/NOTICE.txt"
                 )
             )
         }
@@ -63,6 +69,9 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
+    // MultiDex support
+    implementation(libs.androidx.multidex)
+
     // Socket.IO
     implementation(libs.socket.io.client)
 
@@ -77,11 +86,19 @@ dependencies {
     // JSON parsing (for Socket.IO)
     implementation(libs.json)
 
-    // Firebase
+    // Firebase - Using BOM for version management
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.messaging)
-    implementation(libs.google.auth.library.oauth2.http)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    
+    // Google Auth with exclusions to prevent gRPC conflicts
+    implementation(libs.google.auth.library.oauth2.http) {
+        exclude(group = "io.grpc", module = "grpc-core")
+        exclude(group = "io.grpc", module = "grpc-api")
+        exclude(group = "io.grpc", module = "grpc-context")
+    }
 
     implementation(libs.androidx.work.runtime.ktx)
 }

@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/white">
+
+    <!-- Top Navigation Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingVertical="8dp">
+
+        <!-- Back Button -->
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_revert"
+            android:contentDescription="Back" />
+
+        <!-- Tab Container -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp">
+
+            <!-- Sign Up Tab -->
+            <LinearLayout
+                android:id="@+id/tabSignUp"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sign_up"
+                    android:textSize="16sp"
+                    android:textColor="@color/black"
+                    android:textStyle="bold" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp"
+                    android:background="@color/orange_primary"
+                    android:layout_marginTop="8dp" />
+            </LinearLayout>
+
+            <!-- Chirp ID Tab -->
+            <LinearLayout
+                android:id="@+id/tabChirpId"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/chirp_id"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_gray" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ViewPager Container -->
+    <FrameLayout
+        android:id="@+id/viewPagerContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- Email Page -->
+        <LinearLayout
+            android:id="@+id/pageEmail"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:visibility="visible">
+
+            <!-- Title -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/email"
+                android:textSize="28sp"
+                android:textColor="@color/black"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Subtitle -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/lets_get_started_email"
+                android:textSize="14sp"
+                android:textColor="@color/text_gray"
+                android:layout_marginBottom="32dp" />
+
+            <!-- Email Input Container -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@android:drawable/edit_text"
+                android:gravity="center_vertical">
+
+                <EditText
+                    android:id="@+id/etSignUpEmail"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/enter_email"
+                    android:inputType="textEmailAddress"
+                    android:padding="16dp"
+                    android:textColor="@color/black"
+                    android:background="@android:color/transparent"
+                    android:textSize="16sp" />
+
+                <ImageButton
+                    android:id="@+id/btnNextEmail"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:src="@android:drawable/arrow_down_float"
+                    android:textSize="24sp"
+                    android:textColor="@color/white"
+                    android:backgroundTint="@color/orange_primary"
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Password Page -->
+        <LinearLayout
+            android:id="@+id/pagePassword"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:visibility="gone">
+
+            <!-- Title -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/password"
+                android:textSize="28sp"
+                android:textColor="@color/black"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Subtitle -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/set_password"
+                android:textSize="14sp"
+                android:textColor="@color/text_gray"
+                android:layout_marginBottom="32dp" />
+
+            <!-- Password Input Container -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@android:drawable/edit_text"
+                android:gravity="center_vertical">
+
+                <EditText
+                    android:id="@+id/etSignUpPassword"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/enter_password"
+                    android:inputType="textPassword"
+                    android:padding="16dp"
+                    android:textColor="@color/black"
+                    android:background="@android:color/transparent"
+                    android:textSize="16sp" />
+
+                <ImageButton
+                    android:id="@+id/btnCompleteSignUp"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:src="@android:drawable/arrow_down_float"
+                    android:textSize="24sp"
+                    android:textColor="@color/white"
+                    android:backgroundTint="@color/orange_primary"
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>

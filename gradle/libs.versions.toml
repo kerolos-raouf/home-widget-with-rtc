@@ -1,6 +1,6 @@
 [versions]
 agp = "8.13.1"
-firebaseBom = "34.6.0"
+firebaseBom = "33.5.1"
 googleAuthLibraryOauth2Http = "1.40.0"
 json = "20250517"
 kotlin = "2.0.21"
@@ -14,6 +14,7 @@ lifecycleViewmodelKtx = "2.10.0"
 material = "1.10.0"
 activity = "1.8.0"
 constraintlayout = "2.1.4"
+multidex = "2.0.1"
 socketIoClient = "2.1.2"
 webrtc = "1.1.10"
 workRuntimeKtx = "2.11.0"
@@ -22,10 +23,13 @@ workRuntimeKtx = "2.11.0"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleViewmodelKtx" }
 androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
+androidx-multidex = { module = "androidx.multidex:multidex", version.ref = "multidex" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+firebase-auth = { module = "com.google.firebase:firebase-auth" }
+firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
 google-auth-library-oauth2-http = { module = "com.google.auth:google-auth-library-oauth2-http", version.ref = "googleAuthLibraryOauth2Http" }
 json = { module = "org.json:json", version.ref = "json" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -43,4 +47,3 @@ webrtc = { module = "com.mesibo.api:webrtc", version.ref = "webrtc" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-

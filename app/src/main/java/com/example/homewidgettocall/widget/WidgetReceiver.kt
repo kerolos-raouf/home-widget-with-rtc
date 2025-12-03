@@ -5,16 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.example.homewidgettocall.audio.AudioMessageClient
-import com.example.homewidgettocall.fcm.FCMNotificationSender
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.example.homewidgettocall.data.PreferencesHelper
 import java.io.File
 
 const val RECORD_A_VOICE = "com.example.homewidgettocall.action.SWITCH_TO_NEXT_SUBSCRIPTION_LINE"
 const val ACTION_SEND_AUDIO_MESSAGE = "com.example.homewidgettocall.action.SEND_AUDIO_MESSAGE"
 const val SERVER_URL_EXTRA = "server_url"
-const val RECIPIENT_FCM_TOKEN_EXTRA = "recipient_fcm_token"
 const val AUDIO_FILE_PATH_EXTRA = "audio_file_path"
 
 class WidgetReceiver : BroadcastReceiver() {
@@ -24,9 +20,6 @@ class WidgetReceiver : BroadcastReceiver() {
         
         // TODO: Replace with your actual server URL
         const val DEFAULT_SERVER_URL = "https://synostotic-maverick-infinitesimally.ngrok-free.dev"  // Android emulator localhost
-        
-        // TODO: Replace with the actual FCM token of the device you want to send to
-        private const val TARGET_DEVICE_FCM_TOKEN = "c7NCE0UPT2-WEgg5gwh2G-:APA91bENGuEPLaCfHfGphdP-TS_v1ad27rkMwinIHsGMoNHeh7JMQX5eW-r_DH9ebtgYGdXixhqyfIHVqqk01n6tPbXmlGmQiVAF8ZdddomEJMcXCwFuhPA"
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -67,7 +60,16 @@ class WidgetReceiver : BroadcastReceiver() {
             return
         }
         
+        // Get first friend's FCM token from SharedPreferences
+        val recipientFcmToken = PreferencesHelper.getFirstFriendToken(context)
+        
+        if (recipientFcmToken == null) {
+            Log.e(TAG, "❌ No friend FCM token found in SharedPreferences")
+            return
+        }
+        
         Log.d(TAG, "📁 Audio file found: ${audioFile.length()} bytes")
+        Log.d(TAG, "📮 Recipient FCM token: ${recipientFcmToken.take(20)}...")
         
         // Calculate duration (estimate: 1 byte = 0.001 seconds for compressed audio)
         val durationSeconds = (audioFile.length() / 1000).toInt()
@@ -81,13 +83,13 @@ class WidgetReceiver : BroadcastReceiver() {
                 override fun onConnected() {
                     Log.d(TAG, "✅ Connected to server, uploading...")
                     
-                    // Upload audio
+                    // Upload audio with FCM token from SharedPreferences
                     // Note: recipientId is the Socket.IO ID, which we don't have yet
                     // For now, use FCM token as a temporary ID
                     audioClient?.uploadAudio(
                         audioFile = audioFile,
-                        recipientId = TARGET_DEVICE_FCM_TOKEN,  // Temporary - should be Socket.IO ID
-                        recipientFCMToken = TARGET_DEVICE_FCM_TOKEN,
+                        recipientId = recipientFcmToken,  // Temporary - should be Socket.IO ID
+                        recipientFCMToken = recipientFcmToken,  // Using token from SharedPreferences
                         duration = durationSeconds
                     )
                 }
@@ -99,7 +101,7 @@ class WidgetReceiver : BroadcastReceiver() {
                 override fun onUploadSuccess(messageId: String) {
                     Log.d(TAG, "✅ Upload successful! Message ID: $messageId")
 
-                    // Send FCM notification manually
+                    // Send FCM notification manually (if needed)
                     //sendFCMNotification(context, messageId, audioFile.length(), durationSeconds, serverUrl)
                     
                     // Disconnect after upload
@@ -128,42 +130,5 @@ class WidgetReceiver : BroadcastReceiver() {
         
         // Connect to server
         audioClient.connect()
-    }
-    
-    /**
-     * Send FCM notification to recipient after successful upload
-     * This is a workaround since the server sends Socket.IO notifications
-     * instead of FCM notifications
-     */
-    private fun sendFCMNotification(
-        context: Context,
-        messageId: String,
-        size: Long,
-        duration: Int,
-        serverUrl: String
-    ) {
-        Log.d(TAG, "📤 Sending FCM notification for message: $messageId")
-        
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val success = FCMNotificationSender.sendAudioMessageNotification(
-                    context = context,
-                    targetToken = TARGET_DEVICE_FCM_TOKEN,
-                    messageId = messageId,
-                    senderId = "you",  // Could be device name
-                    size = size.toString(),
-                    duration = duration.toString(),
-                    serverUrl = serverUrl
-                )
-                
-                if (success) {
-                    Log.d(TAG, "✅ FCM notification sent successfully!")
-                } else {
-                    Log.e(TAG, "❌ Failed to send FCM notification")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Error sending FCM: ${e.message}", e)
-            }
-        }
     }
 }
