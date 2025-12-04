@@ -6,9 +6,11 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -25,6 +27,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var btnSubmit: Button
     private lateinit var btnTogglePassword: ImageButton
     private lateinit var tvSignUp: TextView
+    private lateinit var loadingOverlay: RelativeLayout
     private var isPasswordVisible = false
     
     // Firebase Auth instance
@@ -47,6 +50,7 @@ class LoginActivity : AppCompatActivity() {
         btnSubmit = findViewById(R.id.btnSubmit)
         btnTogglePassword = findViewById(R.id.btnTogglePassword)
         tvSignUp = findViewById(R.id.tvSignUp)
+        loadingOverlay = findViewById(R.id.loadingOverlay)
 
         // Submit button click listener
         btnSubmit.setOnClickListener {
@@ -92,8 +96,8 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
-        // Disable button to prevent multiple clicks
-        btnSubmit.isEnabled = false
+        // Show loading
+        showLoading(true)
 
         // Sign in with Firebase
         signInWithFirebase(email, password)
@@ -102,8 +106,8 @@ class LoginActivity : AppCompatActivity() {
     private fun signInWithFirebase(email: String, password: String) {
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
-                // Re-enable button
-                btnSubmit.isEnabled = true
+                // Hide loading
+                showLoading(false)
 
                 if (task.isSuccessful) {
                     // Sign in success
@@ -163,5 +167,12 @@ class LoginActivity : AppCompatActivity() {
         }
         // Move cursor to end of text
         etPassword.setSelection(etPassword.text.length)
+    }
+
+    private fun showLoading(show: Boolean) {
+        loadingOverlay.visibility = if (show) View.VISIBLE else View.GONE
+        btnSubmit.isEnabled = !show
+        etEmail.isEnabled = !show
+        etPassword.isEnabled = !show
     }
 }

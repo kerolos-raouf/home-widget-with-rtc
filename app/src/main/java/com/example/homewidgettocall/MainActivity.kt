@@ -11,6 +11,7 @@ import android.util.Patterns
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -33,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fabAddFriend: FloatingActionButton
     private lateinit var btnLogout: ImageButton
     private lateinit var friendsAdapter: FriendsAdapter
+    private lateinit var loadingOverlay: RelativeLayout
     private val friendsList = mutableListOf<Friend>()
     private lateinit var sharedPreferences: SharedPreferences
 
@@ -59,6 +61,7 @@ class MainActivity : AppCompatActivity() {
         tvEmptyState = findViewById(R.id.tvEmptyState)
         fabAddFriend = findViewById(R.id.fabAddFriend)
         btnLogout = findViewById(R.id.btnLogout)
+        loadingOverlay = findViewById(R.id.loadingOverlay)
 
         // Setup adapter
         friendsAdapter = FriendsAdapter(friendsList) { friend ->
@@ -83,10 +86,16 @@ class MainActivity : AppCompatActivity() {
     private fun loadFriends() {
         val userId = auth.currentUser?.uid ?: return
 
+        // Show loading
+        showLoading(true, "Loading friends...")
+
         firestore.collection("users")
             .document(userId)
             .get()
             .addOnSuccessListener { document ->
+                // Hide loading
+                showLoading(false)
+                
                 if (document.exists()) {
                     // Get friends list from Firestore
                     val friendsData = document.get("friends") as? List<Map<String, String>> ?: emptyList()
@@ -119,6 +128,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .addOnFailureListener { e ->
+                // Hide loading
+                showLoading(false)
+                
                 Log.e(TAG, "Error loading friends", e)
                 Toast.makeText(this, "Error loading friends: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -199,12 +211,18 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // Show loading
+        showLoading(true, "Adding friend...")
+
         // Search for user in Firestore by email
         firestore.collection("users")
             .whereEqualTo("email", friendEmail)
             .get()
             .addOnSuccessListener { documents ->
                 if (documents.isEmpty) {
+                    // Hide loading
+                    showLoading(false)
+                    
                     Toast.makeText(this, "User not found with email: $friendEmail", Toast.LENGTH_SHORT).show()
                     return@addOnSuccessListener
                 }
@@ -224,6 +242,9 @@ class MainActivity : AppCompatActivity() {
                     .document(currentUserId)
                     .update("friends", FieldValue.arrayUnion(friendData))
                     .addOnSuccessListener {
+                        // Hide loading
+                        showLoading(false)
+                        
                         Log.d(TAG, "Friend added successfully")
                         Toast.makeText(this, "Friend added: $friendEmail", Toast.LENGTH_SHORT).show()
                         
@@ -240,11 +261,17 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     .addOnFailureListener { e ->
+                        // Hide loading
+                        showLoading(false)
+                        
                         Log.e(TAG, "Error adding friend", e)
                         Toast.makeText(this, "Error adding friend: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
             }
             .addOnFailureListener { e ->
+                // Hide loading
+                showLoading(false)
+                
                 Log.e(TAG, "Error searching for user", e)
                 Toast.makeText(this, "Error searching for user: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -270,10 +297,16 @@ class MainActivity : AppCompatActivity() {
             "fcmToken" to friend.fcmToken
         )
 
+        // Show loading
+        showLoading(true, "Removing friend...")
+
         firestore.collection("users")
             .document(currentUserId)
             .update("friends", FieldValue.arrayRemove(friendData))
             .addOnSuccessListener {
+                // Hide loading
+                showLoading(false)
+                
                 Log.d(TAG, "Friend removed successfully")
                 Toast.makeText(this, "Friend removed: ${friend.email}", Toast.LENGTH_SHORT).show()
                 
@@ -300,9 +333,26 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .addOnFailureListener { e ->
+                // Hide loading
+                showLoading(false)
+                
                 Log.e(TAG, "Error removing friend", e)
                 Toast.makeText(this, "Error removing friend: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+    }
+
+    private fun showLoading(show: Boolean, message: String = "Loading...") {
+        loadingOverlay.visibility = if (show) View.VISIBLE else View.GONE
+        
+        // Update loading message dynamically
+        if (show) {
+            val loadingText = loadingOverlay.findViewById<TextView>(R.id.tvLoadingMessage)
+            loadingText?.text = message
+        }
+        
+        // Disable interactions during loading
+        fabAddFriend.isEnabled = !show
+        btnLogout.isEnabled = !show
     }
 
     private fun updateEmptyState() {

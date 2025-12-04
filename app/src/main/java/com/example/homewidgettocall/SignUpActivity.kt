@@ -5,10 +5,10 @@ import android.os.Bundle
 import android.util.Log
 import android.util.Patterns
 import android.view.View
-import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
@@ -27,6 +27,7 @@ class SignUpActivity : AppCompatActivity() {
     private lateinit var btnCompleteSignUp: ImageButton
     private lateinit var pageEmail: LinearLayout
     private lateinit var pagePassword: LinearLayout
+    private lateinit var loadingOverlay: RelativeLayout
     private var email: String = ""
     
     // Firebase instances
@@ -53,6 +54,7 @@ class SignUpActivity : AppCompatActivity() {
         btnCompleteSignUp = findViewById(R.id.btnCompleteSignUp)
         pageEmail = findViewById(R.id.pageEmail)
         pagePassword = findViewById(R.id.pagePassword)
+        loadingOverlay = findViewById(R.id.loadingOverlay)
 
         // Back button - goes back to previous screen
         btnBack.setOnClickListener {
@@ -110,8 +112,8 @@ class SignUpActivity : AppCompatActivity() {
             return
         }
 
-        // Disable button to prevent multiple clicks
-        btnCompleteSignUp.isEnabled = false
+        // Show loading
+        showLoading(true)
         
         // Create account with Firebase
         createFirebaseAccount(email, password)
@@ -129,13 +131,13 @@ class SignUpActivity : AppCompatActivity() {
                         // Create user document in Firestore
                         createUserInFirestore(user.uid, email)
                     } else {
-                        btnCompleteSignUp.isEnabled = true
+                        showLoading(false)
                         Toast.makeText(this, "Error: User is null", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     // Sign up failed
                     Log.w(TAG, "createUserWithEmail:failure", task.exception)
-                    btnCompleteSignUp.isEnabled = true
+                    showLoading(false)
                     handleSignUpError(task.exception)
                 }
             }
@@ -165,8 +167,8 @@ class SignUpActivity : AppCompatActivity() {
                 .addOnSuccessListener {
                     Log.d(TAG, "User document created successfully in Firestore")
                     
-                    // Re-enable button
-                    btnCompleteSignUp.isEnabled = true
+                    // Hide loading
+                    showLoading(false)
                     
                     Toast.makeText(
                         this,
@@ -182,8 +184,8 @@ class SignUpActivity : AppCompatActivity() {
                 .addOnFailureListener { e ->
                     Log.w(TAG, "Error creating user document in Firestore", e)
                     
-                    // Re-enable button
-                    btnCompleteSignUp.isEnabled = true
+                    // Hide loading
+                    showLoading(false)
                     
                     Toast.makeText(
                         this,
@@ -226,6 +228,12 @@ class SignUpActivity : AppCompatActivity() {
     private fun showPasswordPage() {
         pageEmail.visibility = View.GONE
         pagePassword.visibility = View.VISIBLE
+    }
+
+    private fun showLoading(show: Boolean) {
+        loadingOverlay.visibility = if (show) View.VISIBLE else View.GONE
+        btnCompleteSignUp.isEnabled = !show
+        etSignUpPassword.isEnabled = !show
     }
 
     override fun onBackPressed() {
