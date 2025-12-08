@@ -9,6 +9,7 @@ object PreferencesHelper {
     private const val KEY_FIRST_FRIEND_FCM_TOKEN = "first_friend_fcm_token"
     private const val KEY_FIRST_FRIEND_EMAIL = "first_friend_email"
     private const val KEY_IS_LOGGED_IN = "is_logged_in"
+    private const val KEY_CURRENT_FRIEND_INDEX = "current_friend_index"
     
     private fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -82,6 +83,23 @@ object PreferencesHelper {
      */
     fun isLoggedIn(context: Context): Boolean {
         return getPreferences(context).getBoolean(KEY_IS_LOGGED_IN, false)
+    }
+    
+    /**
+     * Save current friend index for widget navigation
+     */
+    fun setCurrentFriendIndex(context: Context, index: Int) {
+        getPreferences(context).edit().apply {
+            putInt(KEY_CURRENT_FRIEND_INDEX, index)
+            apply()
+        }
+    }
+    
+    /**
+     * Get current friend index for widget navigation
+     */
+    fun getCurrentFriendIndex(context: Context): Int {
+        return getPreferences(context).getInt(KEY_CURRENT_FRIEND_INDEX, 0)
     }
     
     /**

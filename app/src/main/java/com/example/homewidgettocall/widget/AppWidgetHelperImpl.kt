@@ -10,8 +10,12 @@ import android.widget.RemoteViews
 import com.example.homewidgettocall.LoginActivity
 import com.example.homewidgettocall.R
 import com.example.homewidgettocall.data.PreferencesHelper
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 const val WIDGET_ID = "widget_id"
+const val ACTION_PREVIOUS_FRIEND = "com.example.homewidgettocall.ACTION_PREVIOUS_FRIEND"
+const val ACTION_NEXT_FRIEND = "com.example.homewidgettocall.ACTION_NEXT_FRIEND"
 
 class AppWidgetHelperImpl(
     private val context: Context
@@ -19,6 +23,8 @@ class AppWidgetHelperImpl(
 
     private val squareWidgetComponent = ComponentName(context, WidgetProvider::class.java)
     private val appWidgetManager = AppWidgetManager.getInstance(context)
+    private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
 
     override fun getWidgetIdList(): List<Int> {
         val squareWidgetIds = appWidgetManager.getAppWidgetIds(squareWidgetComponent)
@@ -32,43 +38,123 @@ class AppWidgetHelperImpl(
 
     private fun getRemoteViewsWithData(widgetId: Int) = 
         RemoteViews(context.packageName, R.layout.widget_layout).apply {
-            setFriendName()
+            setFriendInfo()
             setRecordingButton(widgetId)
-            setEditButton()
+            setNavigationButtons(widgetId)
         }
 
     /**
-     * Set the friend name from SharedPreferences
-     * Shows "Login" if user is logged out
+     * Set friend information from Firestore
      */
-    private fun RemoteViews.setFriendName() {
-        // Check if user is logged in
+    private fun RemoteViews.setFriendInfo() {
         val isLoggedIn = PreferencesHelper.isLoggedIn(context)
         
-        val friendName = if (!isLoggedIn) {
+        if (!isLoggedIn) {
             // User is logged out, show "Login"
-            "Login"
-        } else {
-            // User is logged in, check for friend
-            val friendEmail = PreferencesHelper.getFirstFriendEmail(context)
-            val token = PreferencesHelper.getFirstFriendToken(context)
-            
-            if (friendEmail != null && token != null) {
-                // Has friend, show email
-                friendEmail
-            } else {
-                // No friend, show prompt
-                "Add a Friend"
-            }
+            setTextViewText(R.id.txt_friend_name, "Login")
+            setTextViewText(R.id.txt_friend_index, "")
+            Log.d(TAG, "Widget: User logged out")
+            return
         }
         
-        setTextViewText(R.id.txt_friend_name, friendName)
-        Log.d(TAG, "Widget friend name set to: $friendName (Logged in: $isLoggedIn)")
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            setTextViewText(R.id.txt_friend_name, "Login")
+            setTextViewText(R.id.txt_friend_index, "")
+            Log.d(TAG, "Widget: No user ID")
+            return
+        }
+        
+        // Load friends from Firestore
+        loadFriendsAndDisplay(this, userId)
+    }
+    
+    private fun loadFriendsAndDisplay(remoteViews: RemoteViews, userId: String) {
+        firestore.collection("users")
+            .document(userId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val friendsData = document.get("friends") as? List<Map<String, String>> ?: emptyList()
+                    
+                    if (friendsData.isEmpty()) {
+                        remoteViews.setTextViewText(R.id.txt_friend_name, "Add a Friend")
+                        remoteViews.setTextViewText(R.id.txt_friend_index, "")
+                        PreferencesHelper.setCurrentFriendIndex(context, 0)
+                        Log.d(TAG, "Widget: No friends")
+                    } else {
+                        var currentIndex = PreferencesHelper.getCurrentFriendIndex(context)
+                        
+                        // Ensure index is valid
+                        if (currentIndex >= friendsData.size) {
+                            currentIndex = 0
+                            PreferencesHelper.setCurrentFriendIndex(context, 0)
+                        }
+                        
+                        val currentFriend = friendsData[currentIndex]
+                        val email = currentFriend["email"] ?: "Unknown"
+                        val fcmToken = currentFriend["fcmToken"] ?: ""
+                        
+                        // Save current friend data
+                        PreferencesHelper.saveFirstFriendEmail(context, email)
+                        PreferencesHelper.saveFirstFriendToken(context, fcmToken)
+                        
+                        // Update widget display
+                        remoteViews.setTextViewText(R.id.txt_friend_name, email)
+                        remoteViews.setTextViewText(R.id.txt_friend_index, "${currentIndex + 1} of ${friendsData.size}")
+                        
+                        Log.d(TAG, "Widget: Showing friend ${currentIndex + 1}/${friendsData.size}: $email")
+                    }
+                    
+                    // Update widget
+                    val widgetIds = appWidgetManager.getAppWidgetIds(squareWidgetComponent)
+                    widgetIds.forEach { widgetId ->
+                        appWidgetManager.updateAppWidget(widgetId, remoteViews)
+                    }
+                } else {
+                    Log.w(TAG, "Widget: User document not found")
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Widget: Error loading friends", e)
+            }
+    }
+
+    /**
+     * Set up navigation buttons (previous/next friend)
+     */
+    private fun RemoteViews.setNavigationButtons(widgetId: Int) {
+        // Previous button
+        val previousIntent = Intent(context, WidgetReceiver::class.java).apply {
+            action = ACTION_PREVIOUS_FRIEND
+            putExtra(WIDGET_ID, widgetId)
+        }
+        val previousPendingIntent = PendingIntent.getBroadcast(
+            context,
+            widgetId * 1000 + 1,
+            previousIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        setOnClickPendingIntent(R.id.btn_previous_friend, previousPendingIntent)
+        
+        // Next button
+        val nextIntent = Intent(context, WidgetReceiver::class.java).apply {
+            action = ACTION_NEXT_FRIEND
+            putExtra(WIDGET_ID, widgetId)
+        }
+        val nextPendingIntent = PendingIntent.getBroadcast(
+            context,
+            widgetId * 1000 + 2,
+            nextIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        setOnClickPendingIntent(R.id.btn_next_friend, nextPendingIntent)
+        
+        Log.d(TAG, "Widget: Navigation buttons configured")
     }
 
     /**
      * Set up the recording button to start/stop recording
-     * When recording stops, it will automatically send the audio
      */
     private fun RemoteViews.setRecordingButton(widgetId: Int) {
         val intent = Intent(context, WidgetReceiver::class.java).apply {
@@ -83,40 +169,86 @@ class AppWidgetHelperImpl(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        Log.d(TAG, "Setting recording button pending intent for widget: $widgetId")
-
-        // Set the click listener on the recording button
         setOnClickPendingIntent(R.id.btn_start_recording, pendingIntent)
     }
-
+    
     /**
-     * Set up the edit button
-     * Opens LoginActivity if logged out, MainActivity if logged in
+     * Navigate to previous friend
      */
-    private fun RemoteViews.setEditButton() {
-        val isLoggedIn = PreferencesHelper.isLoggedIn(context)
+    fun navigateToPreviousFriend() {
+        val userId = auth.currentUser?.uid ?: return
         
-        val intent = if (isLoggedIn) {
-            // User is logged in, open MainActivity
-            context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-        } else {
-            // User is logged out, open LoginActivity
-            Intent(context, LoginActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-        }
-        
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        firestore.collection("users")
+            .document(userId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val friendsData = document.get("friends") as? List<*>
 
-        setOnClickPendingIntent(R.id.btn_edit, pendingIntent)
-        Log.d(TAG, "Edit button configured (Logged in: $isLoggedIn)")
+                    if (friendsData?.isNotEmpty() == true) {
+                        var currentIndex = PreferencesHelper.getCurrentFriendIndex(context)
+
+                        // Move to previous friend (wrap around)
+                        currentIndex = if (currentIndex > 0) {
+                            currentIndex - 1
+                        } else {
+                            friendsData.size - 1
+                        }
+                        
+                        PreferencesHelper.setCurrentFriendIndex(context, currentIndex)
+                        Log.d(TAG, "Widget: Navigated to previous friend (index: $currentIndex)")
+                        
+                        // Update widget
+                        updateAllWidgets()
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Widget: Error navigating to previous friend", e)
+            }
+    }
+    
+    /**
+     * Navigate to next friend
+     */
+    fun navigateToNextFriend() {
+        val userId = auth.currentUser?.uid ?: return
+        
+        firestore.collection("users")
+            .document(userId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val friendsData = document.get("friends") as? List<*>
+                    
+                    if (friendsData?.isNotEmpty() == true) {
+                        var currentIndex = PreferencesHelper.getCurrentFriendIndex(context)
+                        
+                        // Move to next friend (wrap around)
+                        currentIndex = if (currentIndex < friendsData.size - 1) {
+                            currentIndex + 1
+                        } else {
+                            0
+                        }
+                        
+                        PreferencesHelper.setCurrentFriendIndex(context, currentIndex)
+                        Log.d(TAG, "Widget: Navigated to next friend (index: $currentIndex)")
+                        
+                        // Update widget
+                        updateAllWidgets()
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Widget: Error navigating to next friend", e)
+            }
+    }
+    
+    private fun updateAllWidgets() {
+        val widgetIds = getWidgetIdList()
+        widgetIds.forEach { widgetId ->
+            updateWidgetData(widgetId)
+        }
     }
     
     companion object {

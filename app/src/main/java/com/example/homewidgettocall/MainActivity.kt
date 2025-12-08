@@ -111,10 +111,13 @@ class MainActivity : AppCompatActivity() {
                     if (friendsList.isNotEmpty()) {
                         val firstFriend = friendsList[0]
                         saveFirstFriendData(firstFriend.email, firstFriend.fcmToken)
+                        // Reset to first friend when loading
+                        PreferencesHelper.setCurrentFriendIndex(this, 0)
                         Log.d(TAG, "First friend saved - Email: ${firstFriend.email}, Token: ${firstFriend.fcmToken.take(20)}...")
                     } else {
                         // Clear data if no friends
                         clearFirstFriendData()
+                        PreferencesHelper.setCurrentFriendIndex(this, 0)
                         Log.d(TAG, "No friends, cleared data from SharedPreferences")
                     }
                     
@@ -256,6 +259,7 @@ class MainActivity : AppCompatActivity() {
                         // Update first friend data if this is the first friend
                         if (friendsList.size == 1) {
                             saveFirstFriendData(friendEmail, friendFcmToken)
+                            PreferencesHelper.setCurrentFriendIndex(this, 0)
                             updateWidget()
                             Log.d(TAG, "First friend added, data saved to SharedPreferences")
                         }
@@ -319,14 +323,16 @@ class MainActivity : AppCompatActivity() {
                 // Update SharedPreferences if the removed friend was the first one
                 if (wasFirstFriend) {
                     if (friendsList.isNotEmpty()) {
-                        // Save new first friend's data
+                        // Save new first friend's data and reset index
                         val newFirstFriend = friendsList[0]
                         saveFirstFriendData(newFirstFriend.email, newFirstFriend.fcmToken)
+                        PreferencesHelper.setCurrentFriendIndex(this, 0)
                         updateWidget()
                         Log.d(TAG, "First friend removed, updated with new first friend")
                     } else {
                         // No friends left, clear data
                         clearFirstFriendData()
+                        PreferencesHelper.setCurrentFriendIndex(this, 0)
                         updateWidget()
                         Log.d(TAG, "Last friend removed, cleared data from SharedPreferences")
                     }
@@ -368,12 +374,15 @@ class MainActivity : AppCompatActivity() {
     private fun logout() {
         auth.signOut()
         
-        // Set logged out state
+        // Clear friend data first
+        clearFirstFriendData()
+        
+        // Set logged out state AFTER clearing friend data
+        // This ensures isLoggedIn is explicitly set to false, not cleared
         PreferencesHelper.setLoggedIn(this, false)
         
-        // Clear all user data
-        PreferencesHelper.clearAllData(this)
-        clearFirstFriendData()
+        // Note: We don't call clearAllData() because it would clear isLoggedIn too
+        // clearFirstFriendData() already removes the friend data we need to clear
         
         // Update widget to show "Login"
         updateWidget()

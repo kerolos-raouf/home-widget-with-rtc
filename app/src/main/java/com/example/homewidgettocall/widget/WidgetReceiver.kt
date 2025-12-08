@@ -35,6 +35,18 @@ class WidgetReceiver : BroadcastReceiver() {
                 context.startForegroundService(serviceIntent)
             }
 
+            ACTION_PREVIOUS_FRIEND -> {
+                Log.d(TAG, "⬅️ Previous friend button pressed")
+                val widgetHelper = AppWidgetHelperImpl(context)
+                widgetHelper.navigateToPreviousFriend()
+            }
+
+            ACTION_NEXT_FRIEND -> {
+                Log.d(TAG, "➡️ Next friend button pressed")
+                val widgetHelper = AppWidgetHelperImpl(context)
+                widgetHelper.navigateToNextFriend()
+            }
+
             ACTION_SEND_AUDIO_MESSAGE -> {
                 val audioFilePath = intent.getStringExtra(AUDIO_FILE_PATH_EXTRA) ?: return
                 val serverUrl = intent.getStringExtra(SERVER_URL_EXTRA) ?: DEFAULT_SERVER_URL
